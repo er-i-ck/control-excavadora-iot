@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Fondo circular oscuro estilo industrial IoT -->
+  <circle cx="32" cy="32" r="30" fill="#1e293b" stroke="#f59e0b" stroke-width="4" />
+  <!-- Oruga de la excavadora -->
+  <rect x="14" y="42" width="32" height="10" rx="5" fill="#475569" stroke="#94a3b8" stroke-width="2" />
+  <circle cx="20" cy="47" r="2.5" fill="#f59e0b" />
+  <circle cx="30" cy="47" r="2.5" fill="#f59e0b" />
+  <circle cx="40" cy="47" r="2.5" fill="#f59e0b" />
+  <!-- Cabina -->
+  <path d="M18 42 L18 28 L34 28 L38 42 Z" fill="#f59e0b" />
+  <polygon points="22,31 32,31 34,38 22,38" fill="#1e293b" />
+  <!-- Brazo mecánico y pala -->
+  <path d="M35 34 L46 20 L54 28" fill="none" stroke="#f59e0b" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M52 28 L58 32 L53 38 L48 34 Z" fill="#94a3b8" />
+  <!-- Ondas Wi-Fi / IoT arriba a la izquierda -->
+  <path d="M14 20 A8 8 0 0 1 22 12" fill="none" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round" />
+  <path d="M11 17 A13 13 0 0 1 25 9" fill="none" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round" />
+</svg>
