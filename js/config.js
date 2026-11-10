@@ -28,6 +28,7 @@ export const CONFIG = Object.freeze({
     CANCELAR_DEMO: "/gestion-demos/cancelar"
   },
 
+  // Mapeo sincronizado con el comportamiento físico real del carrito
   COMANDOS: {
     AVANZAR:         { id: 1,  codigo: 1,  nombre: "AVANZAR",         etiqueta: "Avanzar" },
     RETROCEDER:      { id: 2,  codigo: 2,  nombre: "RETROCEDER",      etiqueta: "Retroceder" },
@@ -38,9 +39,9 @@ export const CONFIG = Object.freeze({
     GRUA_BAJAR:      { id: 7,  codigo: 7,  nombre: "GRUA_BAJAR",      etiqueta: "Bajar Brazo" },
     DIAG_IZQ:        { id: 8,  codigo: 8,  nombre: "DIAG_IZQ",        etiqueta: "Diagonal Izq." },
     DIAG_DER:        { id: 9,  codigo: 9,  nombre: "DIAG_DER",        etiqueta: "Diagonal Der." },
-    LUZ:             { id: 11, codigo: 10, nombre: "LUZ",             etiqueta: "Luz / LED" },
-    SONIDO:          { id: 12, codigo: 11, nombre: "SONIDO",          etiqueta: "Sonido" },
-    ENCENDER:        { id: 13, codigo: 12, nombre: "ENCENDER",        etiqueta: "Encender RC" },
-    APAGAR:          { id: 14, codigo: 13, nombre: "APAGAR",          etiqueta: "Apagar RC" }
+    LUZ:             { id: 14, codigo: 13, nombre: "LUZ",             etiqueta: "Luz / LED" },
+    SONIDO:          { id: 11, codigo: 10, nombre: "SONIDO",          etiqueta: "Sonido" },
+    ENCENDER:        { id: 12, codigo: 11, nombre: "ENCENDER",        etiqueta: "Prender RC" },
+    APAGAR:          { id: 13, codigo: 12, nombre: "APAGAR",          etiqueta: "Apagar RC" }
   }
 });
