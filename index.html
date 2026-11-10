@@ -8,74 +8,70 @@
   <meta name="theme-color" content="#0f172a" />
   <title>Control Excavadora IoT · AWS & WSS</title>
 
-  <!-- Favicon original compatible con subruta de GitHub Pages (Punto 3.3) -->
+  <!-- Favicon original compatible con subruta de GitHub Pages -->
   <link rel="icon" type="image/svg+xml" href="./assets/img/favicon.svg" />
 
   <!-- Bootstrap 5.3 CSS y Bootstrap Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
 
-  <!-- Estilos personalizados Mobile First sin scroll vertical -->
+  <!-- Estilos personalizados responsivos (Vertical y Horizontal fijos) -->
   <link rel="stylesheet" href="./css/styles.css" />
 </head>
 <body class="app-viewport">
 
-  <!-- ENCABEZADO E INDICADORES DE ESTADO COMPACTOS (Punto 6.1) -->
+  <!-- ENCABEZADO E INDICADORES DE ESTADO (Punto 6.1) -->
   <header class="app-header border-bottom border-secondary-subtle px-2 py-1">
     <div class="container-fluid max-w-app px-1">
-      <div class="d-flex align-items-center justify-content-between gap-1 mb-1">
+      <div class="header-top d-flex align-items-center justify-content-between gap-2">
         <div class="d-flex align-items-center gap-2 text-truncate">
-          <img src="./assets/img/favicon.svg" alt="Icono Excavadora IoT" width="26" height="26" />
-          <div class="lh-1 text-truncate">
+          <img src="./assets/img/favicon.svg" alt="Icono Excavadora IoT" class="brand-icon" width="24" height="24" />
+          <div class="lh-1 text-truncate d-flex flex-column flex-sm-row align-items-sm-baseline gap-sm-2">
             <h1 class="title-main mb-0 fw-bold text-warning text-truncate" id="vehicle-title">Excavadora IoT RC · Unidad 01</h1>
-            <span class="subtitle-main text-secondary" id="vehicle-subtitle">ID #1 · Control WSS/REST</span>
+            <span class="subtitle-main text-secondary text-truncate" id="vehicle-subtitle">ID #1 · Control WSS/REST</span>
           </div>
         </div>
 
         <button type="button" id="btn-refresh-health" class="btn btn-xs btn-outline-light flex-shrink-0" aria-label="Comprobar estado de servicios AWS y RDS">
           <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
-          <span class="d-none d-sm-inline ms-1">Verificar</span>
+          <span class="ms-1">Verificar</span>
         </button>
       </div>
 
-      <!-- Tres indicadores separados en una sola fila (Punto 6.1) -->
-      <div class="row g-1" role="region" aria-label="Estado de servicios de infraestructura">
-        <div class="col-4">
-          <div id="badge-ws" class="status-pill status-checking" role="status" aria-live="polite">
-            <i id="icon-ws" class="bi bi-arrow-repeat spin-icon" aria-hidden="true"></i>
-            <div class="status-text text-truncate">
-              <span class="status-label">WebSocket WSS</span>
-              <strong id="text-ws" class="text-truncate">Conectando...</strong>
-            </div>
+      <!-- Tres indicadores separados obligatorios -->
+      <div class="status-grid mt-1" role="region" aria-label="Estado de servicios de infraestructura">
+        <div id="badge-ws" class="status-pill status-checking" role="status" aria-live="polite">
+          <i id="icon-ws" class="bi bi-arrow-repeat spin-icon" aria-hidden="true"></i>
+          <div class="status-text text-truncate">
+            <span class="status-label">WebSocket WSS</span>
+            <strong id="text-ws" class="text-truncate">Conectando...</strong>
           </div>
         </div>
-        <div class="col-4">
-          <div id="badge-aws" class="status-pill status-checking" role="status" aria-live="polite">
-            <i id="icon-aws" class="bi bi-arrow-repeat spin-icon" aria-hidden="true"></i>
-            <div class="status-text text-truncate">
-              <span class="status-label">Servidor AWS · 21 APIs</span>
-              <strong id="text-aws" class="text-truncate">Comprobando...</strong>
-            </div>
+
+        <div id="badge-aws" class="status-pill status-checking" role="status" aria-live="polite">
+          <i id="icon-aws" class="bi bi-arrow-repeat spin-icon" aria-hidden="true"></i>
+          <div class="status-text text-truncate">
+            <span class="status-label">Servidor AWS · 21 APIs</span>
+            <strong id="text-aws" class="text-truncate">Comprobando...</strong>
           </div>
         </div>
-        <div class="col-4">
-          <div id="badge-rds" class="status-pill status-unverified" role="status" aria-live="polite">
-            <i id="icon-rds" class="bi bi-database-exclamation" aria-hidden="true"></i>
-            <div class="status-text text-truncate">
-              <span class="status-label">Amazon RDS</span>
-              <strong id="text-rds" class="text-truncate">Sin verificar</strong>
-            </div>
+
+        <div id="badge-rds" class="status-pill status-unverified" role="status" aria-live="polite">
+          <i id="icon-rds" class="bi bi-database-exclamation" aria-hidden="true"></i>
+          <div class="status-text text-truncate">
+            <span class="status-label">Amazon RDS</span>
+            <strong id="text-rds" class="text-truncate">Sin verificar</strong>
           </div>
         </div>
       </div>
     </div>
   </header>
 
-  <!-- CONTENIDO PRINCIPAL FIJO SIN DESPLAZAMIENTO (Puntos 3, 4, 5 y 9) -->
+  <!-- CONTENIDO PRINCIPAL CON CSS GRID ADAPTATIVO (VERTICAL Y HORIZONTAL) -->
   <main class="app-main px-2 py-1">
-    <div class="container-fluid max-w-app h-100 d-flex flex-column justify-content-between px-1 gap-1">
+    <div class="container-fluid max-w-app h-100 px-1 d-flex flex-column gap-1">
 
-      <!-- Barra de trazabilidad de 3 pasos (Punto 4.5) -->
+      <!-- Barra de trazabilidad de 3 pasos -->
       <section class="telemetry-bar px-2 py-1 rounded-2 flex-shrink-0" aria-label="Evidencia de comunicación de comandos">
         <div class="row g-1 text-center align-items-center">
           <div class="col-4 text-truncate">
@@ -94,134 +90,122 @@
         <div id="alert-box" class="alert alert-danger mt-1 mb-0 py-0 px-2 small d-none text-truncate" role="alert" aria-live="assertive"></div>
       </section>
 
-      <!-- ZONA CENTRAL DE MANDOS: JOYSTICK + BOTONES COMPLEMENTARIOS -->
-      <div class="row g-2 flex-grow-1 align-items-stretch cockpit-grid">
+      <!-- REJILLA PRINCIPAL: 2 columnas + DEMO abajo en Vertical | 3 columnas en Horizontal -->
+      <div class="cockpit-layout flex-grow-1">
 
-        <!-- Mitad Izquierda: Joystick y DETENER prioritario (Puntos 4 y 5.4) -->
-        <div class="col-6 col-lg-5 d-flex flex-column">
-          <section class="control-card p-2 rounded-3 flex-grow-1 d-flex flex-column justify-content-between" aria-labelledby="heading-joystick">
-            <div class="d-flex justify-content-between align-items-center">
-              <h2 id="heading-joystick" class="card-heading mb-0 text-uppercase fw-bold text-light">
-                <i class="bi bi-joystick me-1 text-warning" aria-hidden="true"></i>Dirección
-              </h2>
-              <span id="joystick-direction-badge" class="badge bg-dark border border-secondary text-light badge-xs">
-                Neutro
-              </span>
-            </div>
+        <!-- TARJETA 1: JOYSTICK Y PARO PRIORITARIO -->
+        <section class="control-card card-joystick p-2 rounded-3" aria-labelledby="heading-joystick">
+          <div class="d-flex justify-content-between align-items-center flex-shrink-0">
+            <h2 id="heading-joystick" class="card-heading mb-0 text-uppercase fw-bold text-light">
+              <i class="bi bi-joystick me-1 text-warning" aria-hidden="true"></i>Dirección
+            </h2>
+            <span id="joystick-direction-badge" class="badge bg-dark border border-secondary text-light badge-xs">
+              Neutro
+            </span>
+          </div>
 
-            <!-- Joystick Circular -->
-            <div class="joystick-wrapper my-auto">
-              <div id="joystick-zone" class="joystick-zone" role="application" aria-label="Joystick direccional. Arrastra para mover y suelta para detener" tabindex="0">
-                <span class="joy-cardinal joy-n"><i class="bi bi-caret-up-fill"></i></span>
-                <span class="joy-cardinal joy-s"><i class="bi bi-caret-down-fill"></i></span>
-                <span class="joy-cardinal joy-w"><i class="bi bi-caret-left-fill"></i></span>
-                <span class="joy-cardinal joy-e"><i class="bi bi-caret-right-fill"></i></span>
-                <div class="joystick-center-mark" aria-hidden="true"></div>
-                <div id="joystick-knob" class="joystick-knob">
-                  <i class="bi bi-arrows-move" aria-hidden="true"></i>
-                </div>
+          <div class="joystick-wrapper">
+            <div id="joystick-zone" class="joystick-zone" role="application" aria-label="Joystick direccional. Arrastra para mover y suelta para detener" tabindex="0">
+              <span class="joy-cardinal joy-n"><i class="bi bi-caret-up-fill"></i></span>
+              <span class="joy-cardinal joy-s"><i class="bi bi-caret-down-fill"></i></span>
+              <span class="joy-cardinal joy-w"><i class="bi bi-caret-left-fill"></i></span>
+              <span class="joy-cardinal joy-e"><i class="bi bi-caret-right-fill"></i></span>
+              <div class="joystick-center-mark" aria-hidden="true"></div>
+              <div id="joystick-knob" class="joystick-knob">
+                <i class="bi bi-arrows-move" aria-hidden="true"></i>
               </div>
             </div>
+          </div>
 
-            <!-- Botón Prioritario DETENER (Punto 5.4) -->
-            <button type="button" id="btn-stop" class="btn btn-danger btn-stop-priority w-100 fw-bold" data-command-key="PARAR">
-              <i class="bi bi-octagon-fill me-1" aria-hidden="true"></i>DETENER
-            </button>
-          </section>
-        </div>
+          <button type="button" id="btn-stop" class="btn btn-danger btn-stop-priority w-100 fw-bold flex-shrink-0" data-command-key="PARAR">
+            <i class="bi bi-octagon-fill me-1" aria-hidden="true"></i>DETENER
+          </button>
+        </section>
 
-        <!-- Mitad Derecha: Brazo, Diagonales y Auxiliares (Punto 5.1 - 5.3) -->
-        <div class="col-6 col-lg-7 d-flex flex-column">
-          <section class="control-card p-2 rounded-3 flex-grow-1 d-flex flex-column justify-content-between" aria-labelledby="heading-actions">
-            <h2 id="heading-actions" class="card-heading mb-1 text-uppercase fw-bold text-light">
-              <i class="bi bi-gear-wide-connected me-1 text-warning" aria-hidden="true"></i>Brazo y Auxiliares
-            </h2>
-
-            <div class="action-grid my-auto">
-              <button type="button" class="btn btn-control" data-command-key="DIAG_IZQ">
-                <i class="bi bi-arrow-up-left-circle text-info" aria-hidden="true"></i>
-                <span>Diag. Izq.</span>
-              </button>
-              <button type="button" class="btn btn-control" data-command-key="DIAG_DER">
-                <i class="bi bi-arrow-up-right-circle text-info" aria-hidden="true"></i>
-                <span>Diag. Der.</span>
-              </button>
-
-              <button type="button" class="btn btn-control btn-arm" data-command-key="GRUA_SUBIR">
-                <i class="bi bi-box-arrow-up text-warning" aria-hidden="true"></i>
-                <span>Subir Brazo</span>
-              </button>
-              <button type="button" class="btn btn-control btn-arm" data-command-key="GRUA_BAJAR">
-                <i class="bi bi-box-arrow-down text-warning" aria-hidden="true"></i>
-                <span>Bajar Brazo</span>
-              </button>
-
-              <button type="button" class="btn btn-aux" data-command-key="LUZ">
-                <i class="bi bi-lightbulb-fill text-warning" aria-hidden="true"></i>
-                <span>Luz / LED</span>
-              </button>
-              <button type="button" class="btn btn-aux" data-command-key="SONIDO">
-                <i class="bi bi-volume-up-fill text-info" aria-hidden="true"></i>
-                <span>Sonido</span>
-              </button>
-
-              <button type="button" class="btn btn-aux" data-command-key="ENCENDER">
-                <i class="bi bi-power text-success" aria-hidden="true"></i>
-                <span>Prender RC</span>
-              </button>
-              <button type="button" class="btn btn-aux" data-command-key="APAGAR">
-                <i class="bi bi-slash-circle text-danger" aria-hidden="true"></i>
-                <span>Apagar RC</span>
-              </button>
-            </div>
-          </section>
-        </div>
-      </div>
-
-      <!-- ZONA INFERIOR: SECUENCIAS DEMO COMPACTA (Punto 9) -->
-      <section class="control-card p-2 rounded-3 flex-shrink-0" aria-labelledby="heading-demo">
-        <div class="d-flex justify-content-between align-items-center mb-1">
-          <h2 id="heading-demo" class="card-heading mb-0 text-uppercase fw-bold text-light">
-            <i class="bi bi-play-btn-fill me-1 text-warning" aria-hidden="true"></i>Secuencias DEMO (RDS)
+        <!-- TARJETA 2: BRAZO, DIAGONALES Y AUXILIARES -->
+        <section class="control-card card-actions p-2 rounded-3" aria-labelledby="heading-actions">
+          <h2 id="heading-actions" class="card-heading mb-1 text-uppercase fw-bold text-light flex-shrink-0">
+            <i class="bi bi-gear-wide-connected me-1 text-warning" aria-hidden="true"></i>Brazo y Auxiliares
           </h2>
-          <span id="demo-status-badge" class="badge bg-secondary badge-xs">Inactiva</span>
-        </div>
 
-        <div class="row g-1 align-items-center mb-1">
-          <div class="col-6 col-md-7">
+          <div class="action-grid">
+            <button type="button" class="btn btn-control" data-command-key="DIAG_IZQ">
+              <i class="bi bi-arrow-up-left-circle text-info" aria-hidden="true"></i>
+              <span>Diag. Izq.</span>
+            </button>
+            <button type="button" class="btn btn-control" data-command-key="DIAG_DER">
+              <i class="bi bi-arrow-up-right-circle text-info" aria-hidden="true"></i>
+              <span>Diag. Der.</span>
+            </button>
+
+            <button type="button" class="btn btn-control btn-arm" data-command-key="GRUA_SUBIR">
+              <i class="bi bi-box-arrow-up text-warning" aria-hidden="true"></i>
+              <span>Subir Brazo</span>
+            </button>
+            <button type="button" class="btn btn-control btn-arm" data-command-key="GRUA_BAJAR">
+              <i class="bi bi-box-arrow-down text-warning" aria-hidden="true"></i>
+              <span>Bajar Brazo</span>
+            </button>
+
+            <button type="button" class="btn btn-aux" data-command-key="LUZ">
+              <i class="bi bi-lightbulb-fill text-warning" aria-hidden="true"></i>
+              <span>Luz / LED</span>
+            </button>
+            <button type="button" class="btn btn-aux" data-command-key="SONIDO">
+              <i class="bi bi-volume-up-fill text-info" aria-hidden="true"></i>
+              <span>Sonido</span>
+            </button>
+
+            <button type="button" class="btn btn-aux" data-command-key="ENCENDER">
+              <i class="bi bi-power text-success" aria-hidden="true"></i>
+              <span>Prender RC</span>
+            </button>
+            <button type="button" class="btn btn-aux" data-command-key="APAGAR">
+              <i class="bi bi-slash-circle text-danger" aria-hidden="true"></i>
+              <span>Apagar RC</span>
+            </button>
+          </div>
+        </section>
+
+        <!-- TARJETA 3: SECUENCIAS DEMO (RDS) -->
+        <section class="control-card card-demo p-2 rounded-3" aria-labelledby="heading-demo">
+          <div class="d-flex justify-content-between align-items-center mb-1 flex-shrink-0">
+            <h2 id="heading-demo" class="card-heading mb-0 text-uppercase fw-bold text-light">
+              <i class="bi bi-play-btn-fill me-1 text-warning" aria-hidden="true"></i>Secuencias DEMO (RDS)
+            </h2>
+            <span id="demo-status-badge" class="badge bg-secondary badge-xs">Inactiva</span>
+          </div>
+
+          <div class="demo-controls-row mb-1 flex-shrink-0">
             <select id="select-demo" class="form-select form-select-sm bg-dark text-light border-secondary demo-select" aria-label="Seleccionar secuencia DEMO">
               <option value="">Cargando DEMOs...</option>
             </select>
+            <div class="demo-btn-group">
+              <button type="button" id="btn-start-demo" class="btn btn-warning btn-demo fw-bold">
+                <i class="bi bi-play-fill" aria-hidden="true"></i>Iniciar
+              </button>
+              <button type="button" id="btn-cancel-demo" class="btn btn-outline-danger btn-demo fw-bold" disabled>
+                <i class="bi bi-stop-fill" aria-hidden="true"></i>Parar
+              </button>
+            </div>
           </div>
-          <div class="col-3 col-md-3">
-            <button type="button" id="btn-start-demo" class="btn btn-warning btn-demo fw-bold w-100">
-              <i class="bi bi-play-fill" aria-hidden="true"></i>Iniciar
-            </button>
-          </div>
-          <div class="col-3 col-md-2">
-            <button type="button" id="btn-cancel-demo" class="btn btn-outline-danger btn-demo fw-bold w-100" disabled>
-              <i class="bi bi-stop-fill" aria-hidden="true"></i>Parar
-            </button>
-          </div>
-        </div>
 
-        <!-- Previsualización compacta de pasos -->
-        <div id="demo-steps-preview" class="demo-preview px-2 py-1 rounded">
-          Selecciona una DEMO para ver sus pasos.
-        </div>
-      </section>
+          <div id="demo-steps-preview" class="demo-preview px-2 py-1 rounded">
+            Selecciona una DEMO para ver sus pasos.
+          </div>
+        </section>
 
+      </div>
     </div>
   </main>
 
-  <!-- CRÉDITOS FIJOS EN LA PARTE INFERIOR SIN CUBRIR BOTONES (Punto 3.2) -->
+  <!-- CRÉDITOS FIJOS EN LA PARTE INFERIOR -->
   <footer class="app-footer text-center py-1 px-2 border-top border-secondary-subtle flex-shrink-0">
     <p class="mb-0 footer-credits text-secondary">
       Desarrollado por <strong class="text-light">Erick Alejandro Rojas Trejo</strong> · 2026
     </p>
   </footer>
 
-  <!-- Punto de entrada modular ES6 -->
   <script type="module" src="./js/main.js"></script>
 </body>
 </html>

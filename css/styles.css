@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Estilos Responsivos Fijos (100dvh Sin Scroll) - Control Excavadora IoT
+   Estilos Responsivos Fijos (Vertical y Horizontal sin superposición)
    ========================================================================== */
 
 :root {
@@ -21,12 +21,13 @@
 
 html,
 body.app-viewport {
+  width: 100%;
   height: 100vh;
   height: 100dvh;
   max-height: 100dvh;
   margin: 0;
   padding: 0;
-  overflow: hidden; /* Fija toda la interfaz sin deslizar hacia abajo */
+  overflow: hidden;
   background-color: var(--bg-main);
   color: var(--text-light);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif;
@@ -36,7 +37,7 @@ body.app-viewport {
 }
 
 .max-w-app {
-  max-width: 1100px;
+  max-width: 1180px;
 }
 
 .app-header,
@@ -46,56 +47,63 @@ body.app-viewport {
 }
 
 .app-main {
-  flex: 1 1 auto;
+  flex: 1 1 0%;
   min-height: 0;
   overflow: hidden;
 }
 
 .title-main {
-  font-size: 0.88rem;
+  font-size: 0.85rem;
 }
 
 .subtitle-main {
-  font-size: 0.68rem;
+  font-size: 0.65rem;
 }
 
 .btn-xs {
-  padding: 0.2rem 0.5rem;
-  font-size: 0.72rem;
-  min-height: 32px;
+  padding: 0.15rem 0.45rem;
+  font-size: 0.7rem;
+  min-height: 28px;
 }
 
 .badge-xs {
-  font-size: 0.68rem;
-  padding: 0.2em 0.5em;
+  font-size: 0.65rem;
+  padding: 0.2em 0.45em;
 }
 
-/* Indicadores de estado en 1 fila (Punto 6.1) */
+/* Indicadores de estado en 3 columnas iguales */
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.3rem;
+}
+
 .status-pill {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.25rem 0.45rem;
-  border-radius: 0.45rem;
+  gap: 0.3rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.4rem;
   border: 1px solid var(--border-color);
   background-color: var(--bg-card);
-  font-size: 0.72rem;
+  font-size: 0.68rem;
+  min-width: 0;
 }
 
 .status-pill i {
-  font-size: 0.95rem;
+  font-size: 0.88rem;
   flex-shrink: 0;
 }
 
 .status-text {
   display: flex;
   flex-direction: column;
-  line-height: 1.1;
+  line-height: 1.05;
   min-width: 0;
 }
 
 .status-label {
-  font-size: 0.58rem;
+  font-size: 0.55rem;
   color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -135,59 +143,89 @@ body.app-viewport {
   animation: spin 1.4s linear infinite;
 }
 
-/* Barra de trazabilidad (Punto 4.5) */
+/* Barra de trazabilidad */
 .telemetry-bar {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-color);
 }
 
 .telemetry-title {
-  font-size: 0.6rem;
+  font-size: 0.56rem;
   color: var(--text-muted);
   text-transform: uppercase;
 }
 
 .telemetry-value {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   display: block;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* Tarjetas de control */
+/* ==========================================================================
+   LAYOUT PRINCIPAL DE MANDOS (VERTICAL POR DEFECTO: 2 COLUMNAS + DEMO ABAJO)
+   ========================================================================== */
+.cockpit-layout {
+  display: grid;
+  grid-template-columns: 46% 1fr;
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "joystick actions"
+    "demo demo";
+  gap: 0.4rem;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.card-joystick {
+  grid-area: joystick;
+}
+
+.card-actions {
+  grid-area: actions;
+}
+
+.card-demo {
+  grid-area: demo;
+}
+
 .control-card {
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
   min-height: 0;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .card-heading {
-  font-size: 0.74rem;
-  letter-spacing: 0.3px;
+  font-size: 0.7rem;
+  letter-spacing: 0.2px;
 }
 
-.cockpit-grid {
-  min-height: 0;
-}
-
-/* Joystick Circular Adaptativo (Punto 4.1 - 4.3) */
+/* Joystick Circular contenido dentro de su tarjeta sin invadir otras secciones */
 .joystick-wrapper {
+  flex: 1 1 0%;
+  min-height: 0;
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 2px 0;
+  padding: 2px;
 }
 
 .joystick-zone {
   position: relative;
-  width: clamp(136px, 36vw, 195px);
-  height: clamp(136px, 36vw, 195px);
+  /* Se adapta al menor entre el ancho y el alto disponible de la pantalla */
+  width: clamp(105px, min(36vw, 24dvh), 185px);
+  height: clamp(105px, min(36vw, 24dvh), 185px);
   border-radius: 50%;
   background: radial-gradient(circle, #1e293b 0%, #0f172a 75%);
-  border: 3px solid #475569;
-  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.65);
+  border: 2.5px solid #475569;
+  box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.65);
   touch-action: none;
   display: flex;
   justify-content: center;
@@ -201,8 +239,8 @@ body.app-viewport {
 
 .joystick-center-mark {
   position: absolute;
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   border: 2px dashed #64748b;
   pointer-events: none;
@@ -210,17 +248,17 @@ body.app-viewport {
 
 .joystick-knob {
   position: absolute;
-  width: clamp(50px, 13vw, 68px);
-  height: clamp(50px, 13vw, 68px);
+  width: clamp(40px, min(13vw, 9dvh), 64px);
+  height: clamp(40px, min(13vw, 9dvh), 64px);
   border-radius: 50%;
   background: linear-gradient(145deg, #f59e0b, #d97706);
   color: #0f172a;
   display: flex;
   justify-content: center;
   align-items: center;
-  font-size: 1.35rem;
-  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.55);
-  border: 2.5px solid #fef3c7;
+  font-size: 1.15rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.55);
+  border: 2px solid #fef3c7;
   cursor: grab;
   transition: transform 0.08s ease-out, background 0.15s ease;
   will-change: transform;
@@ -236,53 +274,57 @@ body.app-viewport {
 .joy-cardinal {
   position: absolute;
   color: #64748b;
-  font-size: 0.9rem;
+  font-size: 0.78rem;
   pointer-events: none;
 }
-.joy-n { top: 4px; }
-.joy-s { bottom: 4px; }
-.joy-w { left: 6px; }
-.joy-e { right: 6px; }
+.joy-n { top: 3px; }
+.joy-s { bottom: 3px; }
+.joy-w { left: 5px; }
+.joy-e { right: 5px; }
 
-/* Botón prioritario DETENER (Punto 5.4) */
+/* Botón prioritario DETENER */
 .btn-stop-priority {
-  min-height: 44px;
-  font-size: 0.85rem;
-  letter-spacing: 0.4px;
-  border: 2px solid #fca5a5;
-  box-shadow: 0 3px 10px rgba(239, 68, 68, 0.35);
+  min-height: 38px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.3px;
+  border: 1.5px solid #fca5a5;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.35);
 }
 
-/* Rejilla 2x4 de botones de Brazo y Auxiliares (Punto 3.5 y 5.1) */
+/* Rejilla de 8 botones que se reparte exactamente el alto disponible */
 .action-grid {
+  flex: 1 1 0%;
+  min-height: 0;
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.38rem;
-  height: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(4, minmax(0, 1fr));
+  gap: 0.3rem;
 }
 
 .btn-control,
 .btn-aux {
-  min-height: 44px;
-  padding: 0.25rem 0.3rem;
+  min-height: 0;
+  height: 100%;
+  padding: 0.15rem 0.25rem;
   background-color: #0f172a;
   color: var(--text-light);
   border: 1px solid #475569;
   font-weight: 600;
-  font-size: 0.74rem;
+  font-size: 0.68rem;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  line-height: 1.15;
-  border-radius: 0.45rem;
+  line-height: 1.1;
+  border-radius: 0.4rem;
   transition: all 0.15s ease;
 }
 
 .btn-control i,
 .btn-aux i {
-  font-size: 1rem;
-  margin-bottom: 2px;
+  font-size: 0.92rem;
+  margin-bottom: 1px;
 }
 
 .btn-control:hover,
@@ -312,24 +354,37 @@ body.app-viewport {
   background-color: rgba(239, 68, 68, 0.25);
 }
 
-/* Controles de DEMO compactos (Punto 9) */
+/* Sección DEMO */
+.demo-controls-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.demo-btn-group {
+  display: flex;
+  gap: 0.3rem;
+}
+
 .demo-select,
 .btn-demo {
-  min-height: 38px;
-  font-size: 0.76rem;
+  height: 32px;
+  min-height: 32px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.72rem;
 }
 
 .demo-preview {
   background-color: #0b1120 !important;
   color: #cbd5e1 !important;
   border: 1px solid var(--border-color);
-  font-size: 0.7rem;
-  height: 36px;
+  font-size: 0.66rem;
+  height: 32px;
   overflow-y: auto;
   forced-color-adjust: none;
 }
 
-/* Forza contraste oscuro/amarillo en las etiquetas de pasos DEMO incluso con Dark Mode de Chrome PC */
 .demo-preview .badge {
   background-color: #1e293b !important;
   color: #fbbf24 !important;
@@ -339,46 +394,116 @@ body.app-viewport {
 }
 
 .footer-credits {
-  font-size: 0.68rem;
+  font-size: 0.64rem;
 }
 
-/* Ajuste para modo horizontal en celular (Landscape - Punto 3.4) */
-@media (max-height: 500px) and (orientation: landscape) {
+/* ==========================================================================
+   MODO HORIZONTAL EN TELÉFONO (LANDSCAPE): 3 COLUMNAS LADO A LADO SIN ENCIMARSE
+   ========================================================================== */
+@media (orientation: landscape) and (max-height: 600px) {
+  .app-header {
+    padding-top: 2px !important;
+    padding-bottom: 2px !important;
+  }
+
+  .brand-icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .title-main {
+    font-size: 0.76rem;
+  }
+
   .status-pill {
-    padding: 0.15rem 0.35rem;
+    padding: 0.12rem 0.35rem;
+    font-size: 0.62rem;
   }
+
+  .telemetry-bar {
+    padding-top: 2px !important;
+    padding-bottom: 2px !important;
+  }
+
+  /* Pasa a 3 columnas: Izquierda (Joystick) | Centro (8 Botones) | Derecha (DEMO) */
+  .cockpit-layout {
+    grid-template-columns: 30% 38% 1fr;
+    grid-template-rows: minmax(0, 1fr);
+    grid-template-areas: "joystick actions demo";
+    gap: 0.35rem;
+  }
+
   .joystick-zone {
-    width: 118px;
-    height: 118px;
+    width: clamp(82px, 32dvh, 130px);
+    height: clamp(82px, 32dvh, 130px);
   }
+
   .joystick-knob {
-    width: 44px;
-    height: 44px;
-    font-size: 1.1rem;
+    width: clamp(32px, 12dvh, 46px);
+    height: clamp(32px, 12dvh, 46px);
+    font-size: 0.95rem;
   }
-  .action-grid {
-    grid-template-columns: repeat(4, 1fr);
+
+  .btn-stop-priority {
+    min-height: 30px;
+    font-size: 0.7rem;
+    padding: 0.1rem 0.3rem;
   }
+
+  .demo-controls-row {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
+  }
+
+  .demo-btn-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .demo-preview {
+    flex: 1 1 0%;
+    height: auto;
+    min-height: 0;
+  }
+
+  .app-footer {
+    padding-top: 1px !important;
+    padding-bottom: 1px !important;
+  }
+}
+
+/* ==========================================================================
+   ESCRITORIO Y PANTALLAS GRANDES
+   ========================================================================== */
+@media (min-width: 992px) and (min-height: 601px) {
+  .title-main { font-size: 1rem; }
+  .subtitle-main { font-size: 0.75rem; }
+  .status-pill { font-size: 0.8rem; padding: 0.35rem 0.65rem; }
+  .status-label { font-size: 0.68rem; }
+
+  .cockpit-layout {
+    grid-template-columns: 42% 1fr;
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: 0.75rem;
+  }
+
+  .joystick-zone {
+    width: clamp(160px, 28dvh, 210px);
+    height: clamp(160px, 28dvh, 210px);
+  }
+
+  .joystick-knob {
+    width: 68px;
+    height: 68px;
+  }
+
   .btn-control,
   .btn-aux {
-    min-height: 38px;
-    font-size: 0.68rem;
+    font-size: 0.82rem;
   }
-  .demo-preview {
-    height: 28px;
-  }
-}
 
-/* En pantallas grandes de escritorio, dar mayor amplitud */
-@media (min-width: 992px) {
-  .title-main { font-size: 1rem; }
-  .status-pill { font-size: 0.82rem; padding: 0.4rem 0.7rem; }
-  .status-label { font-size: 0.7rem; }
-  .btn-control, .btn-aux {
-    min-height: 56px;
-    font-size: 0.85rem;
-  }
   .demo-preview {
-    height: 48px;
+    height: 44px;
+    font-size: 0.75rem;
   }
 }
