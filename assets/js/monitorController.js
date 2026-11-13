@@ -4,9 +4,9 @@
  * 10 últimos movimientos individuales persistidos en Amazon RDS.
  */
 
-import { CONFIG, resolverComandoInfo } from "./config.js?v=8";
-import { apiClient } from "./apiClient.js?v=8";
-import { wsClient } from "./wsClient.js?v=8";
+import { CONFIG, resolverComandoInfo } from "./config.js?v=12";
+import { apiClient } from "./apiClient.js?v=12";
+import { wsClient } from "./wsClient.js?v=12";
 import { extraerCampoFecha, formatearFechaHora } from "./dateUtils.js?v=8";
 
 class MonitorController {

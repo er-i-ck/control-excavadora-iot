@@ -1,11 +1,9 @@
 /**
- * Módulo Cliente WebSocket Seguro Compartido (WSS)
- * Mantiene UNA sola sesión WSS para CONTROL y MONITOREO, aplica reconexión
- * con espera progresiva y dispara resincronización REST al recuperar conexión.
+ * Módulo Cliente WebSocket Seguro Compartido (WSS - v12)
  */
 
-import { CONFIG } from "./config.js?v=8";
-import { uiState } from "./uiState.js?v=8";
+import { CONFIG } from "./config.js?v=12";
+import { uiState } from "./uiState.js?v=12";
 
 class WsClient {
   constructor() {
@@ -17,16 +15,10 @@ class WsClient {
     this.reconnectListeners = new Set();
   }
 
-  /**
-   * Suscribe controladores (DEMO, MONITOREO) a los mensajes JSON entrantes.
-   */
   onMessage(callback) {
     this.eventListeners.add(callback);
   }
 
-  /**
-   * Suscribe controladores al evento de reconexión exitosa (Punto 6.2 y 7.4).
-   */
   onReconnect(callback) {
     this.reconnectListeners.add(callback);
   }
@@ -61,7 +53,6 @@ class WsClient {
         this.reconnectTimer = null;
       }
 
-      // Punto 6.2 y 7.4: Al reconectar WSS, resincronizar estado e historial por REST
       if (wasReconnecting) {
         this.reconnectListeners.forEach((cb) => cb());
       }
@@ -81,7 +72,6 @@ class WsClient {
     });
   }
 
-  // Punto 8.4: Reconexión controlada con espera progresiva (exponential backoff)
   _scheduleReconnect(idVehiculo) {
     if (this.reconnectTimer) return;
     this.reconnectAttempts += 1;
@@ -105,12 +95,11 @@ class WsClient {
       return;
     }
 
-    // Punto 8.4: Filtrar estrictamente eventos de otros vehículos
     if (payload.id_vehiculo && Number(payload.id_vehiculo) !== CONFIG.VEHICULO_ID) {
       return;
     }
 
-    const evento = payload.evento || "EVENTO";
+    const evento = String(payload.evento || "EVENTO").trim().toUpperCase();
 
     if (evento === "ESTADO_ACTUAL") {
       uiState.markWsEventReceived(`ESTADO_ACTUAL (Vehículo #${payload.id_vehiculo || CONFIG.VEHICULO_ID})`);
@@ -119,11 +108,19 @@ class WsClient {
         `NUEVO_MOVIMIENTO · ID Cmd: ${payload.id_comando} (Vehículo #${payload.id_vehiculo})`
       );
     } else if (evento === "MOVIMIENTO_DEMO") {
-      uiState.markWsEventReceived(
-        `DEMO PASO: ${payload.comando || payload.id_comando} (${payload.duracion_ms || 0} ms)`
-      );
-    } else if (evento === "INICIO_DEMO" || evento === "FIN_DEMO" || evento === "DEMO_CANCELADA") {
+      const cmdLabel = payload.comando || `Comando #${payload.id_comando}`;
+      uiState.markWsEventReceived(`DEMO PASO: ${cmdLabel} (${payload.duracion_ms || 0} ms)`);
+      uiState.syncDemoLockState(true, `Paso: ${cmdLabel}`, "warning text-dark");
+    } else if (evento === "INICIO_DEMO") {
+      uiState.markWsEventReceived(`INICIO_DEMO (Vehículo #${payload.id_vehiculo || CONFIG.VEHICULO_ID})`);
+      uiState.syncDemoLockState(true, "En ejecución (WSS)", "warning text-dark");
+    } else if (evento === "FIN_DEMO" || evento === "DEMO_FINALIZADA") {
       uiState.markWsEventReceived(`${evento} (Vehículo #${payload.id_vehiculo || CONFIG.VEHICULO_ID})`);
+      // Desbloqueo directo e inmediato de Joystick, Botones y Alerta
+      uiState.syncDemoLockState(false, "Finalizada", "success");
+    } else if (evento === "DEMO_CANCELADA") {
+      uiState.markWsEventReceived(`DEMO_CANCELADA (Vehículo #${payload.id_vehiculo || CONFIG.VEHICULO_ID})`);
+      uiState.syncDemoLockState(false, "Cancelada", "secondary");
     }
 
     this.eventListeners.forEach((cb) => cb(payload));

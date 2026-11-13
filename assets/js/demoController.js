@@ -1,14 +1,12 @@
 /**
- * Controlador de Secuencias DEMO (Demo Controller)
- * Escucha la misma instancia compartida de WebSocket (?v=8) y libera
- * automáticamente el Joystick y los botones en cuanto concluye la DEMO.
+ * Controlador de Secuencias DEMO (Demo Controller - v12)
  */
 
-import { CONFIG } from "./config.js?v=8";
-import { apiClient } from "./apiClient.js?v=8";
-import { wsClient } from "./wsClient.js?v=8";
-import { movementController } from "./movementController.js?v=8";
-import { uiState } from "./uiState.js?v=8";
+import { CONFIG } from "./config.js?v=12";
+import { apiClient } from "./apiClient.js?v=12";
+import { wsClient } from "./wsClient.js?v=12";
+import { movementController } from "./movementController.js?v=12";
+import { uiState } from "./uiState.js?v=12";
 
 class DemoController {
   constructor() {
@@ -18,7 +16,6 @@ class DemoController {
     this.btnCancel = document.getElementById("btn-cancel-demo");
 
     this.demos = [];
-    this.isRunning = false;
     this.currentDemoDurationMs = 15000;
     this.autoUnlockTimer = null;
   }
@@ -28,7 +25,7 @@ class DemoController {
     await this.cargarCatalogoDemos();
 
     movementController.onEmergencyStop(() => {
-      if (this.isRunning) {
+      if (uiState.isDemoCurrentlyRunning()) {
         this.cancelarDemoActiva(true);
       }
     });
@@ -114,7 +111,6 @@ class DemoController {
         return;
       }
 
-      // Calcular duración total de los pasos para el desbloqueo automático de seguridad
       const totalMs = pasos.reduce(
         (acc, p) => acc + Number(p.duracion_ms || 0) + Number(p.pausa_ms || 0),
         0
@@ -141,7 +137,7 @@ class DemoController {
   }
 
   async iniciarDemoSeleccionada() {
-    if (this.isRunning) return;
+    if (uiState.isDemoCurrentlyRunning()) return;
 
     const idDemo = this.selectEl ? this.selectEl.value : "";
     if (!idDemo) {
@@ -149,20 +145,17 @@ class DemoController {
       return;
     }
 
-    this._setRunningUIState(true, `Ejecutando DEMO #${idDemo}...`);
+    uiState.syncDemoLockState(true, `Ejecutando DEMO #${idDemo}...`, "warning text-dark");
     uiState.markCommandRequested(`Iniciar DEMO #${idDemo}`, idDemo);
 
-    // Temporizador de respaldo basado en la suma de duraciones de la DEMO + margen de 1.5s
     this._programarDesbloqueoRespaldo(this.currentDemoDurationMs + 1500);
 
     try {
       const res = await apiClient.iniciarDemo(idDemo, CONFIG.VEHICULO_ID);
-      if (this.isRunning) {
-        uiState.markCommandAcceptedByApi(`DEMO #${idDemo} en curso`, res.status);
-      }
+      uiState.markCommandAcceptedByApi(`DEMO #${idDemo} en curso`, res.status);
     } catch (error) {
       this._clearAutoUnlockTimer();
-      this._setRunningUIState(false, "Inactiva");
+      uiState.syncDemoLockState(false, "Inactiva", "secondary");
       uiState.showAlert(`No se pudo iniciar la DEMO: ${error.message}`);
     }
   }
@@ -171,12 +164,12 @@ class DemoController {
     this._clearAutoUnlockTimer();
     try {
       const res = await apiClient.cancelarDemo(CONFIG.VEHICULO_ID);
-      this._setRunningUIState(false, "Cancelada");
+      uiState.syncDemoLockState(false, "Cancelada", "secondary");
       if (!silent) {
         uiState.markCommandAcceptedByApi("DEMO Cancelada", res.status);
       }
     } catch (error) {
-      this._setRunningUIState(false, "Inactiva");
+      uiState.syncDemoLockState(false, "Inactiva", "secondary");
       if (!silent) {
         uiState.showAlert(`Error al cancelar DEMO: ${error.message}`);
       }
@@ -184,34 +177,21 @@ class DemoController {
   }
 
   _handleWsDemoEvents(payload) {
-    const evento = (payload.evento || "").toUpperCase();
-
-    if (evento === "INICIO_DEMO") {
-      this._setRunningUIState(true, "En ejecución (WSS)");
-    } else if (evento === "MOVIMIENTO_DEMO") {
-      const cmdLabel = payload.comando || `Comando #${payload.id_comando}`;
-      this._setRunningUIState(true, `Paso: ${cmdLabel}`);
-    } else if (
-      evento === "FIN_DEMO" ||
-      evento === "DEMO_FINALIZADA" ||
-      evento === "DEMO_COMPLETADA"
-    ) {
+    const evento = String(payload.evento || "").trim().toUpperCase();
+    if (evento === "FIN_DEMO" || evento === "DEMO_FINALIZADA") {
       this._clearAutoUnlockTimer();
-      this._setRunningUIState(false, "Finalizada");
-      uiState.clearAlert();
+      uiState.syncDemoLockState(false, "Finalizada", "success");
     } else if (evento === "DEMO_CANCELADA") {
       this._clearAutoUnlockTimer();
-      this._setRunningUIState(false, "Cancelada");
-      uiState.clearAlert();
+      uiState.syncDemoLockState(false, "Cancelada", "secondary");
     }
   }
 
   _programarDesbloqueoRespaldo(timeoutMs) {
     this._clearAutoUnlockTimer();
     this.autoUnlockTimer = setTimeout(() => {
-      if (this.isRunning) {
-        this._setRunningUIState(false, "Finalizada");
-        uiState.clearAlert();
+      if (uiState.isDemoCurrentlyRunning()) {
+        uiState.syncDemoLockState(false, "Finalizada", "success");
       }
     }, timeoutMs);
   }
@@ -221,18 +201,6 @@ class DemoController {
       clearTimeout(this.autoUnlockTimer);
       this.autoUnlockTimer = null;
     }
-  }
-
-  _setRunningUIState(running, badgeText) {
-    this.isRunning = running;
-    movementController.setDemoRunningState(running);
-
-    if (this.btnStart) this.btnStart.disabled = running;
-    if (this.selectEl) this.selectEl.disabled = running;
-    if (this.btnCancel) this.btnCancel.disabled = !running;
-
-    const badgeStyle = running ? "warning text-dark" : badgeText === "Finalizada" ? "success" : "secondary";
-    uiState.setDemoStatus(badgeText, badgeStyle);
   }
 }
 

@@ -4,15 +4,15 @@
  * una única sesión WSS, el cliente REST y los 3 indicadores de infraestructura.
  */
 
-import { CONFIG } from "./config.js?v=8";
-import { apiClient } from "./apiClient.js?v=8";
-import { wsClient } from "./wsClient.js?v=8";
-import { uiState } from "./uiState.js?v=8";
-import { movementController } from "./movementController.js?v=8";
-import { JoystickComponent } from "./joystick.js?v=8";
-import { demoController } from "./demoController.js?v=8";
-import { navigation } from "./navigation.js?v=8";
-import { monitorController } from "./monitorController.js?v=8";
+import { CONFIG } from "./config.js?v=12";
+import { apiClient } from "./apiClient.js?v=12";
+import { wsClient } from "./wsClient.js?v=12";
+import { uiState } from "./uiState.js?v=12";
+import { movementController } from "./movementController.js?v=12";
+import { JoystickComponent } from "./joystick.js?v=12";
+import { demoController } from "./demoController.js?v=12";
+import { navigation } from "./navigation.js?v=12";
+import { monitorController } from "./monitorController.js?v=12";
 
 class AppInitializer {
   constructor() {

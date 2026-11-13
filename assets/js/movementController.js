@@ -1,11 +1,10 @@
 /**
- * Controlador de Movimientos (Movement Controller)
- * Unifica la lógica de negocio para el Joystick y los botones complementarios.
+ * Controlador de Movimientos (Movement Controller - v12)
  */
 
-import { CONFIG } from "./config.js?v=8";
-import { apiClient } from "./apiClient.js?v=8";
-import { uiState } from "./uiState.js?v=8";
+import { CONFIG } from "./config.js?v=12";
+import { apiClient } from "./apiClient.js?v=12";
+import { uiState } from "./uiState.js?v=12";
 
 const PULSE_DURATIONS_MS = {
   LUZ: 300,
@@ -19,18 +18,18 @@ class MovementController {
     this.activeCommandKey = null;
     this.lastSentTimestamp = 0;
     this.requestSequence = 0;
-    this.isDemoRunning = false;
     this.onEmergencyStopCallback = null;
   }
 
-  setDemoRunningState(isRunning) {
-    this.isDemoRunning = isRunning;
-    document.querySelectorAll("[data-command-key]").forEach((btn) => {
-      const key = btn.getAttribute("data-command-key");
-      if (key !== "PARAR") {
-        btn.disabled = isRunning;
-      }
-    });
+  get isDemoRunning() {
+    return uiState.isDemoCurrentlyRunning();
+  }
+
+  setDemoRunningState(isRunning, badgeText = null) {
+    uiState.syncDemoLockState(
+      isRunning,
+      badgeText || (isRunning ? "En ejecución" : "Inactiva")
+    );
   }
 
   onEmergencyStop(callback) {

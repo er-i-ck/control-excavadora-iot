@@ -3,7 +3,7 @@
  * Compartido entre CONTROL y MONITOREO sin alterar el envío de comandos.
  */
 
-import { CONFIG } from "./config.js?v=8";
+import { CONFIG } from "./config.js?v=12";
 
 class ApiClient {
   constructor() {
