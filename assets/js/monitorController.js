@@ -1,17 +1,14 @@
 /**
- * Controlador de Monitoreo en Tiempo Real (monitorController.js)
- * Gestiona el Panel del Último Movimiento Reportado y la Tabla Dinámica de los
- * 10 últimos movimientos individuales persistidos en Amazon RDS.
+ * Controlador de Monitoreo en Tiempo Real (monitorController.js - v15)
  */
 
-import { CONFIG, resolverComandoInfo } from "./config.js?v=12";
-import { apiClient } from "./apiClient.js?v=12";
-import { wsClient } from "./wsClient.js?v=12";
-import { extraerCampoFecha, formatearFechaHora } from "./dateUtils.js?v=13";
+import { CONFIG, resolverComandoInfo } from "./config.js?v=15";
+import { apiClient } from "./apiClient.js?v=15";
+import { wsClient } from "./wsClient.js?v=15";
+import { extraerCampoFecha, formatearFechaHora } from "./dateUtils.js?v=15";
 
 class MonitorController {
   constructor() {
-    // Elementos del Panel de Último Movimiento (Punto 4.1)
     this.lastMoveNameEl = document.getElementById("mon-last-movement");
     this.lastMoveCodeEl = document.getElementById("mon-last-code");
     this.lastMoveVehicleEl = document.getElementById("mon-last-vehicle");
@@ -20,13 +17,11 @@ class MonitorController {
     this.lastMoveOriginEl = document.getElementById("mon-last-origin");
     this.lastMoveSyncBadge = document.getElementById("mon-last-sync-badge");
 
-    // Elementos de la Tabla de 10 Movimientos (Punto 5.1)
     this.tableBodyEl = document.getElementById("mon-history-tbody");
     this.historyStatusBadge = document.getElementById("mon-history-badge");
     this.btnSyncManual = document.getElementById("btn-sync-monitor");
     this.monitorAlertEl = document.getElementById("mon-alert-box");
 
-    // Control de concurrencia, duplicados y orden temporal (Puntos 4.4, 7.4 y 8.4)
     this.syncSequence = 0;
     this.lastWsUpdateLocalMs = 0;
     this.lastProcessedEventSignature = null;
@@ -38,22 +33,15 @@ class MonitorController {
       this.btnSyncManual.addEventListener("click", () => this.sincronizarTodoPorRest(true));
     }
 
-    // 1. Escuchar eventos en tiempo real del WebSocket compartido (Punto 8.1 y 8.2)
     wsClient.onMessage((payload) => this._handleIncomingWsEvent(payload));
 
-    // 2. Si el WebSocket se reconecta tras una caída, resincronizar todo por REST (Punto 6.2 y 7.4)
     wsClient.onReconnect(() => {
       this.sincronizarTodoPorRest(false);
     });
 
-    // 3. Carga inicial desde REST (Punto 7.2)
     await this.sincronizarTodoPorRest(true);
   }
 
-  /**
-   * Consulta en paralelo (GET) el último estado y los últimos 10 movimientos en RDS.
-   * Protege contra condiciones de carrera mediante syncSequence (Punto 7.4).
-   */
   async sincronizarTodoPorRest(mostrarEstadoCarga = false) {
     const currentSeq = ++this.syncSequence;
     const syncStartLocalMs = Date.now();
@@ -68,10 +56,8 @@ class MonitorController {
       apiClient.obtenerHistorialVehiculo(CONFIG.VEHICULO_ID)
     ]);
 
-    // Si otra sincronización más reciente ya inició, descartar esta respuesta antigua (Punto 7.4)
     if (currentSeq !== this.syncSequence) return;
 
-    // A. Procesar Historial de 10 movimientos persistidos
     let registrosOrdenados = [];
     if (historialResult.status === "fulfilled") {
       registrosOrdenados = this._ordenarYLimitarDiez(historialResult.value);
@@ -83,13 +69,11 @@ class MonitorController {
       this._showMonitorAlert(`No se pudo sincronizar el historial: ${historialResult.reason?.message}`);
     }
 
-    // B. Procesar Último Movimiento (evitando que una respuesta REST vieja pise un evento WSS más reciente - Punto 4.4)
     if (syncStartLocalMs < this.lastWsUpdateLocalMs) {
       return;
     }
 
     if (estadoResult.status === "fulfilled" && estadoResult.value) {
-      // Si el estado en RDS no tiene fecha pero el historial sí, complementar con el registro #1 más reciente
       const estadoObj = estadoResult.value;
       const masRecienteHistorial = registrosOrdenados.length > 0 ? registrosOrdenados[0] : null;
       this._actualizarPanelDesdeRest(estadoObj, masRecienteHistorial);
@@ -102,9 +86,6 @@ class MonitorController {
     }
   }
 
-  /**
-   * Actualiza el panel destacado usando datos confirmados de REST (Puntos 4.1, 4.2 y 7.3)
-   */
   _actualizarPanelDesdeRest(registroPrimario, registroRespaldo = null) {
     const idCmd =
       registroPrimario.id_comando ??
@@ -128,7 +109,6 @@ class MonitorController {
       ? `${infoCatalogo.etiqueta} (${infoCatalogo.nombre})`
       : nombreRaw || (idCmd ? `Comando #${idCmd}` : "Sin movimientos");
 
-    // Tomar marca temporal del estado o, si no viene en estado, del último registro persistido
     const rawFecha = extraerCampoFecha(registroPrimario) || extraerCampoFecha(registroRespaldo);
     const { fecha, hora } = formatearFechaHora(rawFecha, "Confirmado en RDS (Sin fecha)");
 
@@ -149,9 +129,6 @@ class MonitorController {
     });
   }
 
-  /**
-   * Procesa los mensajes recibidos en tiempo real desde el WebSocket compartido (Puntos 4.2, 8.2, 9.2 y 9.3)
-   */
   _handleIncomingWsEvent(payload) {
     if (!payload || typeof payload !== "object") return;
 
@@ -159,15 +136,13 @@ class MonitorController {
     if (idVehiculo !== CONFIG.VEHICULO_ID) return;
 
     const evento = payload.evento || "";
-
-    // Evitar procesar eventos idénticos duplicados en el mismo instante (Punto 4.4 y 8.4)
     const signature = `${evento}-${payload.id_comando || ""}-${payload.comando || ""}-${payload.id_movimiento || ""}`;
     const now = Date.now();
+
     if (this.lastProcessedEventSignature === signature && now - this.lastWsUpdateLocalMs < 150) {
       return;
     }
 
-    // Caso 1: Estado inicial enviado por el WebSocket al abrir conexión
     if (evento === "ESTADO_ACTUAL" && Array.isArray(payload.estado) && payload.estado.length > 0) {
       const est = payload.estado[0];
       if (now >= this.lastWsUpdateLocalMs) {
@@ -176,7 +151,6 @@ class MonitorController {
       return;
     }
 
-    // Caso 2: Movimiento individual en vivo (originado en CONTROL local o en cliente/pestaña externa - Punto 8.2 y 8.3)
     if (evento === "NUEVO_MOVIMIENTO") {
       this.lastWsUpdateLocalMs = now;
       this.lastProcessedEventSignature = signature;
@@ -201,13 +175,10 @@ class MonitorController {
         badgeStyle: "success"
       });
 
-      // Punto 5.3 y 8.2: Reconciliar el historial persistido desde REST para obtener la fila y fecha oficial de RDS
       this._programarReconciliacionHistorial();
       return;
     }
 
-    // Caso 3: Eventos de secuencia DEMO (Puntos 4.3, 9.2 y 9.3)
-    // Actualizan el panel de Último Movimiento Reportado, pero NO se agregan al historial de 10 movimientos individuales
     if (evento === "MOVIMIENTO_DEMO" || evento === "INICIO_DEMO" || evento === "FIN_DEMO" || evento === "DEMO_CANCELADA") {
       this.lastWsUpdateLocalMs = now;
       this.lastProcessedEventSignature = signature;
@@ -245,10 +216,6 @@ class MonitorController {
     }
   }
 
-  /**
-   * Reconcilia por REST después de un evento NUEVO_MOVIMIENTO con debounce corto (350 ms)
-   * para evitar consultas excesivas y recuperar el timestamp oficial guardado en RDS (Punto 5.3).
-   */
   _programarReconciliacionHistorial() {
     if (this.historyRefreshTimer) {
       clearTimeout(this.historyRefreshTimer);
@@ -259,14 +226,9 @@ class MonitorController {
     }, 350);
   }
 
-  /**
-   * Ordena del más reciente al más antiguo, filtra al vehículo actual, elimina duplicados
-   * y limita estrictamente a 10 registros (Puntos 5.1, 5.2 y 7.2).
-   */
   _ordenarYLimitarDiez(listaCruda) {
     if (!Array.isArray(listaCruda) || listaCruda.length === 0) return [];
 
-    // 1. Filtrar por id_vehiculo si el atributo viene presente
     const filtrados = listaCruda.filter((item) => {
       if (item && item.id_vehiculo !== undefined && item.id_vehiculo !== null) {
         return Number(item.id_vehiculo) === CONFIG.VEHICULO_ID;
@@ -274,14 +236,13 @@ class MonitorController {
       return true;
     });
 
-    // 2. Eliminar duplicados por ID de historial/movimiento si existe
     const vistos = new Set();
     const unicos = [];
     for (const item of filtrados) {
       const idReg = item.id_historial ?? item.id_movimiento ?? item.id ?? null;
       const rawFecha = extraerCampoFecha(item) || "";
       const idCmd = item.id_comando ?? item.codigo ?? item.comando ?? "";
-      const claveUnica = idReg !== null ? `ID-${idReg}` : ` T-${rawFecha}-${idCmd}`;
+      const claveUnica = idReg !== null ? `ID-${idReg}` : `T-${rawFecha}-${idCmd}`;
 
       if (!vistos.has(claveUnica)) {
         vistos.add(claveUnica);
@@ -289,7 +250,6 @@ class MonitorController {
       }
     }
 
-    // 3. Ordenar del más reciente al más antiguo por fecha/hora o por ID descendente (Punto 5.2)
     unicos.sort((a, b) => {
       const idA = Number(a.id_historial ?? a.id_movimiento ?? a.id ?? NaN);
       const idB = Number(b.id_historial ?? b.id_movimiento ?? b.id ?? NaN);
@@ -306,13 +266,9 @@ class MonitorController {
       return 0;
     });
 
-    // 4. Limitar estrictamente a los 10 movimientos más recientes (Punto 5.1 y 5.4)
     return unicos.slice(0, CONFIG.HISTORIAL_MAX_ROWS);
   }
 
-  /**
-   * Construye de forma segura (textContent) las filas de la tabla de 10 movimientos (Puntos 5.1, 5.4 y 10.5)
-   */
   _renderizarTablaHistorial(registros) {
     if (!this.tableBodyEl) return;
     this.tableBodyEl.innerHTML = "";
@@ -331,12 +287,10 @@ class MonitorController {
     registros.forEach((item, index) => {
       const tr = document.createElement("tr");
 
-      // Columna 1: # (1 al 10)
       const tdNum = document.createElement("td");
       tdNum.className = "fw-bold text-warning";
       tdNum.textContent = String(index + 1);
 
-      // Columna 2: Movimiento
       const idCmd = item.id_comando ?? item.codigo ?? null;
       const nombreRaw = item.nombre_comando || item.comando || item.movimiento || item.nombre || null;
       const infoCmd = resolverComandoInfo(idCmd ?? nombreRaw);
@@ -347,7 +301,6 @@ class MonitorController {
         ? `${infoCmd.etiqueta} (${infoCmd.nombre})`
         : nombreRaw || `Comando #${idCmd ?? "—"}`;
 
-      // Columna 3: Código / ID real (Opcional según Punto 5.1)
       const idRegistro = item.id_historial ?? item.id_movimiento ?? item.id ?? null;
       const tdCodigo = document.createElement("td");
       tdCodigo.className = "text-info small";
@@ -361,7 +314,6 @@ class MonitorController {
         tdCodigo.textContent = "—";
       }
 
-      // Columnas 4 y 5: Fecha y Hora reales desde RDS
       const rawFecha = extraerCampoFecha(item);
       const { fecha, hora } = formatearFechaHora(rawFecha, "Sin fecha");
 

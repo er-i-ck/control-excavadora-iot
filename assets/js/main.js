@@ -1,18 +1,16 @@
 /**
- * Punto de Entrada Principal (main.js)
- * Inicializa CONTROL (Práctica 4.1) y MONITOREO (Práctica 4.2) compartiendo
- * una única sesión WSS, el cliente REST y los 3 indicadores de infraestructura.
+ * Punto de Entrada Principal (main.js - v15)
  */
 
-import { CONFIG } from "./config.js?v=12";
-import { apiClient } from "./apiClient.js?v=12";
-import { wsClient } from "./wsClient.js?v=12";
-import { uiState } from "./uiState.js?v=12";
-import { movementController } from "./movementController.js?v=12";
-import { JoystickComponent } from "./joystick.js?v=12";
-import { demoController } from "./demoController.js?v=12";
-import { navigation } from "./navigation.js?v=12";
-import { monitorController } from "./monitorController.js?v=12";
+import { CONFIG } from "./config.js?v=15";
+import { apiClient } from "./apiClient.js?v=15";
+import { wsClient } from "./wsClient.js?v=15";
+import { uiState } from "./uiState.js?v=15";
+import { movementController } from "./movementController.js?v=15";
+import { JoystickComponent } from "./joystick.js?v=15";
+import { demoController } from "./demoController.js?v=15";
+import { navigation } from "./navigation.js?v=15";
+import { monitorController } from "./monitorController.js?v=15";
 
 class AppInitializer {
   constructor() {
@@ -21,13 +19,11 @@ class AppInitializer {
   }
 
   async start() {
-    // 1. Configurar títulos del vehículo
     const titleEl = document.getElementById("vehicle-title");
     const subEl = document.getElementById("vehicle-subtitle");
     if (titleEl) titleEl.textContent = CONFIG.VEHICULO_NOMBRE;
     if (subEl) subEl.textContent = `ID #${CONFIG.VEHICULO_ID} · Control y Monitoreo WSS/REST`;
 
-    // 2. Inicializar navegación entre CONTROL y MONITOREO (Punto 3.1 y 7.4)
     navigation.init();
     navigation.onViewChange((vistaActiva) => {
       if (vistaActiva === "monitor") {
@@ -35,21 +31,17 @@ class AppInitializer {
       }
     });
 
-    // 3. Inicializar Joystick circular y botones de CONTROL (Práctica 4.1 intacta)
     this.joystick = new JoystickComponent("joystick-zone", "joystick-knob");
     this._bindActionButtons();
 
-    // 4. Abrir la conexión WebSocket Segura (WSS) única compartida (Punto 6.2 y 8.1)
     wsClient.connect(CONFIG.VEHICULO_ID);
 
-    // 5. Comprobación inicial y periódica de salud AWS y RDS (Punto 6.3)
     await this.checkInfrastructureHealth();
     this.healthTimer = setInterval(
       () => this.checkInfrastructureHealth(),
       CONFIG.HEALTH_POLL_INTERVAL_MS
     );
 
-    // 6. Inicializar módulo de MONITOREO (Práctica 4.2) y módulo de DEMO (Práctica 4.1)
     await Promise.allSettled([
       monitorController.init(),
       demoController.init(),

@@ -1,7 +1,6 @@
 /**
- * Utilidades de Fecha y Hora (dateUtils.js - v13)
- * Convierte las marcas temporales UTC provenientes de Amazon RDS a la zona
- * horaria local (America/Mexico_City) sin inventar fechas (Puntos 7.5 y 12.5).
+ * Utilidades de Fecha y Hora (dateUtils.js - v15)
+ * Convierte las marcas temporales UTC de Amazon RDS a hora local de México (UTC-6).
  */
 
 const ZONA_HORARIA_MX = "America/Mexico_City";
@@ -21,10 +20,6 @@ export function extraerCampoFecha(obj) {
   );
 }
 
-/**
- * Parsea una cadena ISO o MySQL ('YYYY-MM-DD HH:MM:SS') proveniente de RDS (UTC)
- * a un objeto Date válido.
- */
 export function parsearFechaSegura(rawDate) {
   if (!rawDate) return null;
   if (rawDate instanceof Date) {
@@ -34,12 +29,12 @@ export function parsearFechaSegura(rawDate) {
   const str = String(rawDate).trim();
   if (!str) return null;
 
-  // Convertir espacio de MySQL a 'T' estándar ISO
+  // Normalizar espacio MySQL ('2026-11-13 07:02:19') a formato ISO ('2026-11-13T07:02:19')
   let normalized = str.includes(" ") && !str.includes("T") ? str.replace(" ", "T") : str;
 
-  // Si viene con fecha y hora desde RDS sin indicador de zona horaria, marcarla como UTC ('Z')
+  // Amazon RDS envía DATETIME en UTC sin la 'Z' final; agregar 'Z' para que JS reste las 6 horas de México
   const tieneHora = normalized.includes("T");
-  const tieneZona = /Z|[+-]\d{2}:?\d{2}$/i.test(normalized);
+  const tieneZona = /(Z|[+-]\d{2}:?\d{2})$/i.test(normalized);
   if (tieneHora && !tieneZona) {
     normalized = `${normalized}Z`;
   }
@@ -48,9 +43,6 @@ export function parsearFechaSegura(rawDate) {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-/**
- * Devuelve { fecha, hora, timestampMs, tieneFechaReal } ajustado a America/Mexico_City.
- */
 export function formatearFechaHora(rawDate, fallbackTexto = "Sin marca temporal en contrato") {
   if (!rawDate) {
     return {
