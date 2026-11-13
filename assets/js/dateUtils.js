@@ -1,12 +1,11 @@
 /**
- * Utilidades de Fecha y Hora (dateUtils.js)
- * Normaliza marcas temporales provenientes de Amazon RDS o eventos WSS
- * sin fabricar fechas inexistentes (Puntos 4.5 y 7.5).
+ * Utilidades de Fecha y Hora (dateUtils.js - v13)
+ * Convierte las marcas temporales UTC provenientes de Amazon RDS a la zona
+ * horaria local (America/Mexico_City) sin inventar fechas (Puntos 7.5 y 12.5).
  */
 
-/**
- * Extrae el valor crudo de fecha/hora buscando los nombres de columna habituales en RDS/FastAPI.
- */
+const ZONA_HORARIA_MX = "America/Mexico_City";
+
 export function extraerCampoFecha(obj) {
   if (!obj || typeof obj !== "object") return null;
   return (
@@ -23,7 +22,8 @@ export function extraerCampoFecha(obj) {
 }
 
 /**
- * Parsea de forma segura una cadena ISO o MySQL ('YYYY-MM-DD HH:MM:SS') a objeto Date.
+ * Parsea una cadena ISO o MySQL ('YYYY-MM-DD HH:MM:SS') proveniente de RDS (UTC)
+ * a un objeto Date válido.
  */
 export function parsearFechaSegura(rawDate) {
   if (!rawDate) return null;
@@ -34,18 +34,22 @@ export function parsearFechaSegura(rawDate) {
   const str = String(rawDate).trim();
   if (!str) return null;
 
-  // Normalizar formato MySQL 'YYYY-MM-DD HH:MM:SS' a ISO 'YYYY-MM-DDTHH:MM:SS'
-  const normalized = str.includes(" ") && !str.includes("T") ? str.replace(" ", "T") : str;
-  const parsed = new Date(normalized);
+  // Convertir espacio de MySQL a 'T' estándar ISO
+  let normalized = str.includes(" ") && !str.includes("T") ? str.replace(" ", "T") : str;
 
-  if (!Number.isNaN(parsed.getTime())) {
-    return parsed;
+  // Si viene con fecha y hora desde RDS sin indicador de zona horaria, marcarla como UTC ('Z')
+  const tieneHora = normalized.includes("T");
+  const tieneZona = /Z|[+-]\d{2}:?\d{2}$/i.test(normalized);
+  if (tieneHora && !tieneZona) {
+    normalized = `${normalized}Z`;
   }
-  return null;
+
+  const parsed = new Date(normalized);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 /**
- * Devuelve { fecha, hora, timestampMs, raw } sin inventar valores cuando no existen.
+ * Devuelve { fecha, hora, timestampMs, tieneFechaReal } ajustado a America/Mexico_City.
  */
 export function formatearFechaHora(rawDate, fallbackTexto = "Sin marca temporal en contrato") {
   if (!rawDate) {
@@ -59,7 +63,6 @@ export function formatearFechaHora(rawDate, fallbackTexto = "Sin marca temporal 
 
   const dateObj = parsearFechaSegura(rawDate);
   if (!dateObj) {
-    // Si el backend envía fecha como texto no estándar, mostrar el valor literal recibido
     return {
       fecha: String(rawDate),
       hora: "—",
@@ -69,12 +72,14 @@ export function formatearFechaHora(rawDate, fallbackTexto = "Sin marca temporal 
   }
 
   const fecha = dateObj.toLocaleDateString("es-MX", {
+    timeZone: ZONA_HORARIA_MX,
     year: "numeric",
     month: "2-digit",
     day: "2-digit"
   });
 
   const hora = dateObj.toLocaleTimeString("es-MX", {
+    timeZone: ZONA_HORARIA_MX,
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",

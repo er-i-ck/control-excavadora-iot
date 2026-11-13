@@ -7,7 +7,7 @@
 import { CONFIG, resolverComandoInfo } from "./config.js?v=12";
 import { apiClient } from "./apiClient.js?v=12";
 import { wsClient } from "./wsClient.js?v=12";
-import { extraerCampoFecha, formatearFechaHora } from "./dateUtils.js?v=8";
+import { extraerCampoFecha, formatearFechaHora } from "./dateUtils.js?v=13";
 
 class MonitorController {
   constructor() {
