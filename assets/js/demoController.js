@@ -1,14 +1,14 @@
 /**
  * Controlador de Secuencias DEMO (Demo Controller)
- * Gestiona la consulta del catálogo de DEMOs en RDS, previsualización de pasos,
- * ejecución asíncrona, prevención de doble inicio y cancelación.
+ * Escucha la misma instancia compartida de WebSocket (?v=8) y libera
+ * automáticamente el Joystick y los botones en cuanto concluye la DEMO.
  */
 
-import { CONFIG } from "./config.js";
-import { apiClient } from "./apiClient.js";
-import { wsClient } from "./wsClient.js";
-import { movementController } from "./movementController.js";
-import { uiState } from "./uiState.js";
+import { CONFIG } from "./config.js?v=8";
+import { apiClient } from "./apiClient.js?v=8";
+import { wsClient } from "./wsClient.js?v=8";
+import { movementController } from "./movementController.js?v=8";
+import { uiState } from "./uiState.js?v=8";
 
 class DemoController {
   constructor() {
@@ -19,20 +19,20 @@ class DemoController {
 
     this.demos = [];
     this.isRunning = false;
+    this.currentDemoDurationMs = 15000;
+    this.autoUnlockTimer = null;
   }
 
   async init() {
     this._bindEvents();
     await this.cargarCatalogoDemos();
 
-    // Si el usuario presiona el botón rojo DETENER prioritario mientras corre una DEMO, cancelarla
     movementController.onEmergencyStop(() => {
       if (this.isRunning) {
         this.cancelarDemoActiva(true);
       }
     });
 
-    // Escuchar eventos WSS para saber cuándo avanza o termina la DEMO en el servidor (Punto 9.3)
     wsClient.onMessage((payload) => this._handleWsDemoEvents(payload));
   }
 
@@ -70,7 +70,7 @@ class DemoController {
       if (this.demos.length === 0) {
         const emptyOpt = document.createElement("option");
         emptyOpt.value = "";
-        emptyOpt.textContent = "No hay secuencias DEMO registradas para este vehículo";
+        emptyOpt.textContent = "No hay secuencias DEMO registradas";
         this.selectEl.appendChild(emptyOpt);
         return;
       }
@@ -80,7 +80,6 @@ class DemoController {
       placeholder.textContent = "-- Selecciona una secuencia DEMO --";
       this.selectEl.appendChild(placeholder);
 
-      // Punto 10.5: Representación segura en el DOM usando textContent
       this.demos.forEach((demo) => {
         const opt = document.createElement("option");
         opt.value = String(demo.id_demo);
@@ -88,7 +87,6 @@ class DemoController {
         this.selectEl.appendChild(opt);
       });
 
-      // Seleccionar la primera por comodidad y mostrar sus pasos
       this.selectEl.value = String(this.demos[0].id_demo);
       await this.mostrarPasosDemo(this.demos[0].id_demo);
     } catch {
@@ -103,7 +101,7 @@ class DemoController {
   async mostrarPasosDemo(idDemo) {
     if (!this.previewEl) return;
     if (!idDemo) {
-      this.previewEl.textContent = "Selecciona una DEMO para ver su secuencia de movimientos programados.";
+      this.previewEl.textContent = "Selecciona una DEMO para ver sus pasos.";
       return;
     }
 
@@ -111,11 +109,18 @@ class DemoController {
     try {
       const pasos = await apiClient.obtenerMovimientosDemo(idDemo);
       if (!pasos || pasos.length === 0) {
-        this.previewEl.textContent = "Esta DEMO aún no tiene pasos asignados en la base de datos.";
+        this.previewEl.textContent = "Esta DEMO no tiene pasos asignados.";
+        this.currentDemoDurationMs = 5000;
         return;
       }
 
-      // Construir lista segura en el DOM (Punto 10.5)
+      // Calcular duración total de los pasos para el desbloqueo automático de seguridad
+      const totalMs = pasos.reduce(
+        (acc, p) => acc + Number(p.duracion_ms || 0) + Number(p.pausa_ms || 0),
+        0
+      );
+      this.currentDemoDurationMs = Math.max(3000, totalMs);
+
       this.previewEl.innerHTML = "";
       const listaOl = document.createElement("div");
       listaOl.className = "d-flex flex-wrap gap-1";
@@ -135,7 +140,6 @@ class DemoController {
     }
   }
 
-  // Punto 9.2 y 9.4: Iniciar DEMO e impedir que se inicie dos veces
   async iniciarDemoSeleccionada() {
     if (this.isRunning) return;
 
@@ -148,16 +152,23 @@ class DemoController {
     this._setRunningUIState(true, `Ejecutando DEMO #${idDemo}...`);
     uiState.markCommandRequested(`Iniciar DEMO #${idDemo}`, idDemo);
 
+    // Temporizador de respaldo basado en la suma de duraciones de la DEMO + margen de 1.5s
+    this._programarDesbloqueoRespaldo(this.currentDemoDurationMs + 1500);
+
     try {
       const res = await apiClient.iniciarDemo(idDemo, CONFIG.VEHICULO_ID);
-      uiState.markCommandAcceptedByApi(`DEMO #${idDemo} en curso`, res.status);
+      if (this.isRunning) {
+        uiState.markCommandAcceptedByApi(`DEMO #${idDemo} en curso`, res.status);
+      }
     } catch (error) {
+      this._clearAutoUnlockTimer();
       this._setRunningUIState(false, "Inactiva");
       uiState.showAlert(`No se pudo iniciar la DEMO: ${error.message}`);
     }
   }
 
   async cancelarDemoActiva(silent = false) {
+    this._clearAutoUnlockTimer();
     try {
       const res = await apiClient.cancelarDemo(CONFIG.VEHICULO_ID);
       this._setRunningUIState(false, "Cancelada");
@@ -173,16 +184,42 @@ class DemoController {
   }
 
   _handleWsDemoEvents(payload) {
-    const evento = payload.evento || "";
+    const evento = (payload.evento || "").toUpperCase();
+
     if (evento === "INICIO_DEMO") {
       this._setRunningUIState(true, "En ejecución (WSS)");
     } else if (evento === "MOVIMIENTO_DEMO") {
       const cmdLabel = payload.comando || `Comando #${payload.id_comando}`;
       this._setRunningUIState(true, `Paso: ${cmdLabel}`);
-    } else if (evento === "FIN_DEMO") {
+    } else if (
+      evento === "FIN_DEMO" ||
+      evento === "DEMO_FINALIZADA" ||
+      evento === "DEMO_COMPLETADA"
+    ) {
+      this._clearAutoUnlockTimer();
       this._setRunningUIState(false, "Finalizada");
+      uiState.clearAlert();
     } else if (evento === "DEMO_CANCELADA") {
+      this._clearAutoUnlockTimer();
       this._setRunningUIState(false, "Cancelada");
+      uiState.clearAlert();
+    }
+  }
+
+  _programarDesbloqueoRespaldo(timeoutMs) {
+    this._clearAutoUnlockTimer();
+    this.autoUnlockTimer = setTimeout(() => {
+      if (this.isRunning) {
+        this._setRunningUIState(false, "Finalizada");
+        uiState.clearAlert();
+      }
+    }, timeoutMs);
+  }
+
+  _clearAutoUnlockTimer() {
+    if (this.autoUnlockTimer) {
+      clearTimeout(this.autoUnlockTimer);
+      this.autoUnlockTimer = null;
     }
   }
 

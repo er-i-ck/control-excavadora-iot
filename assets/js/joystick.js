@@ -1,11 +1,9 @@
 /**
  * Módulo de Joystick Circular Intuitivo (Táctil + Mouse)
- * Calcula el radio dinámicamente según el tamaño de pantalla,
- * emite comandos solo al cambiar de dirección efectiva y solicita DETENER al soltar.
  */
 
-import { movementController } from "./movementController.js";
-import { uiState } from "./uiState.js";
+import { movementController } from "./movementController.js?v=8";
+import { uiState } from "./uiState.js?v=8";
 
 export class JoystickComponent {
   constructor(zoneId = "joystick-zone", knobId = "joystick-knob") {
@@ -41,6 +39,7 @@ export class JoystickComponent {
       return;
     }
 
+    uiState.clearAlert();
     event.preventDefault();
     this.isDragging = true;
     this.activePointerId = event.pointerId;
@@ -77,7 +76,6 @@ export class JoystickComponent {
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
 
-    // Radio máximo dinámico adaptado al tamaño real en móvil o escritorio
     const maxRadius = Math.max(28, (rect.width - knobRect.width) / 2 - 4);
 
     const dx = clientX - centerX;
@@ -95,7 +93,7 @@ export class JoystickComponent {
     if (distance < this.deadZoneRadius) {
       if (this.currentDirectionKey !== null) {
         this.currentDirectionKey = null;
-        uiState.setJoystickLabel("Neutro", false);
+        uiState.setJoystickLabel("Centro · Neutro", false);
         movementController.triggerPriorityStop();
       }
       return;
@@ -139,7 +137,7 @@ export class JoystickComponent {
 
     const hadActiveMovement = this.currentDirectionKey !== null;
     this.currentDirectionKey = null;
-    uiState.setJoystickLabel("Neutro", false);
+    uiState.setJoystickLabel("Centro · Neutro", false);
 
     if (hadActiveMovement) {
       movementController.triggerPriorityStop();

@@ -1,15 +1,12 @@
 /**
  * Controlador de Movimientos (Movement Controller)
- * - Botones de movimiento (Brazo y Diagonales): funcionan como interruptor (al tocarlos de nuevo envían PARAR y se apagan).
- * - Botones auxiliares (Luz, Sonido, Prender/Apagar RC): se iluminan solo durante su pulso temporal y se apagan solos.
- * - Joystick: se mantiene activo al arrastrar y envía PARAR automáticamente al soltar.
+ * Unifica la lógica de negocio para el Joystick y los botones complementarios.
  */
 
-import { CONFIG } from "./config.js";
-import { apiClient } from "./apiClient.js";
-import { uiState } from "./uiState.js";
+import { CONFIG } from "./config.js?v=8";
+import { apiClient } from "./apiClient.js?v=8";
+import { uiState } from "./uiState.js?v=8";
 
-// Duración exacta de los pulsos físicos en el ESP8266 (en milisegundos)
 const PULSE_DURATIONS_MS = {
   LUZ: 300,
   SONIDO: 300,
@@ -40,9 +37,6 @@ class MovementController {
     this.onEmergencyStopCallback = callback;
   }
 
-  /**
-   * Ejecuta un comando por su clave de catálogo (ej. 'GRUA_BAJAR', 'PARAR', 'LUZ')
-   */
   async executeCommand(commandKey, options = { fromJoystick: false, force: false }) {
     const cmdInfo = CONFIG.COMANDOS[commandKey];
     if (!cmdInfo) {
@@ -50,24 +44,20 @@ class MovementController {
       return false;
     }
 
-    // 1. Si es el botón DETENER, ejecutar paro prioritario inmediato
     if (commandKey === "PARAR") {
       return await this.triggerPriorityStop();
     }
 
-    // 2. Impedir comandos manuales mientras corre una DEMO
     if (this.isDemoRunning) {
       uiState.showAlert("Hay una secuencia DEMO en ejecución. Presiona DETENER o Parar antes de usar controles manuales.");
       return false;
     }
 
-    // 3. SI ES UN BOTÓN DE MOVIMIENTO CONTINUO Y YA ESTÁ ILUMINADO -> APAGARLO (Enviar PARAR)
     const isPulseCommand = Object.prototype.hasOwnProperty.call(PULSE_DURATIONS_MS, commandKey);
     if (!options.fromJoystick && !isPulseCommand && this.activeCommandKey === commandKey) {
       return await this.triggerPriorityStop();
     }
 
-    // 4. Control anti-ráfagas para el Joystick
     const now = Date.now();
     if (
       options.fromJoystick &&
@@ -82,7 +72,6 @@ class MovementController {
       return false;
     }
 
-    // 5. Distinguir visualmente entre Pulso Temporal y Movimiento Continuo
     if (!isPulseCommand) {
       this.activeCommandKey = commandKey;
       uiState.clearAllButtonStates();
@@ -104,7 +93,6 @@ class MovementController {
       uiState.setButtonState(commandKey, "active");
       uiState.markCommandAcceptedByApi(cmdInfo.etiqueta, res.status);
 
-      // Si es un botón de pulso (Luz, Sonido, Prender, Apagar), apagar su iluminación al terminar el pulso
       if (isPulseCommand) {
         const pulseMs = PULSE_DURATIONS_MS[commandKey] || 400;
         setTimeout(() => {
@@ -122,10 +110,6 @@ class MovementController {
     }
   }
 
-  /**
-   * Acción prioritaria DETENER:
-   * Apaga cualquier movimiento activo en pantalla, cancela DEMO si aplica y envía PARAR (ID 5).
-   */
   async triggerPriorityStop() {
     const stopCmd = CONFIG.COMANDOS.PARAR;
     this.activeCommandKey = null;
@@ -144,7 +128,6 @@ class MovementController {
       const res = await apiClient.enviarMovimiento(stopCmd.id, CONFIG.VEHICULO_ID);
       if (stopSeq === this.requestSequence) {
         uiState.markCommandAcceptedByApi(stopCmd.etiqueta, res.status);
-        // Iluminar brevemente DETENER en confirmación y luego dejar todos los botones apagados
         uiState.setButtonState("PARAR", "active");
         setTimeout(() => {
           uiState.setButtonState("PARAR", "idle");
