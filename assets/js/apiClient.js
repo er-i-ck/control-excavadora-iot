@@ -1,19 +1,17 @@
 /**
  * Módulo Cliente REST (Fetch API + async/await + Timeouts)
- * Centraliza todas las solicitudes HTTPS hacia el backend FastAPI en AWS EC2.
+ * Compartido entre CONTROL y MONITOREO sin alterar el envío de comandos.
  */
 
-import { CONFIG } from "./config.js";
+import { CONFIG } from "./config.js?v=8";
 
 class ApiClient {
   constructor() {
     this.baseUrl = CONFIG.API_BASE_URL;
     this.defaultTimeout = CONFIG.HTTP_TIMEOUT_MS;
+    this.resolvedHistoryEndpoint = null;
   }
 
-  /**
-   * Ejecuta una petición Fetch con control de timeout y manejo seguro de errores JSON.
-   */
   async request(endpoint, options = {}, timeoutMs = this.defaultTimeout) {
     const controller = new AbortController();
     const timerId = setTimeout(() => controller.abort(), timeoutMs);
@@ -29,7 +27,8 @@ class ApiClient {
       const response = await fetch(url, {
         ...options,
         headers,
-        signal: controller.signal
+        signal: controller.signal,
+        cache: "no-store"
       });
 
       clearTimeout(timerId);
@@ -59,37 +58,76 @@ class ApiClient {
 
   /**
    * Comprueba de forma separada la salud de FastAPI (GET /) y la disponibilidad de RDS (GET /estado/1)
-   * Cumple estrictamente con el Punto 6.3.
    */
   async verificarInfraestructura(idVehiculo = CONFIG.VEHICULO_ID) {
-    // 1. Verificar Servidor AWS FastAPI (GET /)
     try {
       await this.request(CONFIG.ENDPOINTS.SALUD_API, { method: "GET" }, 4500);
     } catch {
-      // Si la API en EC2 no responde, AWS está No disponible y RDS queda Sin verificar (Punto 6.3)
       return { aws: "UNAVAILABLE", rds: "UNVERIFIED", estadoVehiculo: null };
     }
 
-    // 2. Si AWS respondió, verificar diagnóstico de RDS consultando el procedimiento almacenado sp_obtener_estado
     try {
       const resEstado = await this.request(CONFIG.ENDPOINTS.ESTADO_VEHICULO(idVehiculo), { method: "GET" }, 5000);
-      if (Array.isArray(resEstado.data)) {
+      if (Array.isArray(resEstado.data) || (resEstado.data && typeof resEstado.data === "object")) {
         return { aws: "AVAILABLE", rds: "AVAILABLE", estadoVehiculo: resEstado.data };
       }
       return { aws: "AVAILABLE", rds: "UNVERIFIED", estadoVehiculo: null };
     } catch {
-      // AWS está activo pero la consulta a la base de datos falló
       return { aws: "AVAILABLE", rds: "UNAVAILABLE", estadoVehiculo: null };
     }
   }
 
-  // GET: Consultar catálogo de comandos disponibles para el vehículo (Punto 7.2)
+  // GET: Consultar último estado reportado del vehículo en RDS (Punto 4.2 y 7.2)
+  async obtenerUltimoEstadoVehiculo(idVehiculo = CONFIG.VEHICULO_ID) {
+    const res = await this.request(CONFIG.ENDPOINTS.ESTADO_VEHICULO(idVehiculo), { method: "GET" });
+    if (Array.isArray(res.data)) {
+      return res.data.length > 0 ? res.data[0] : null;
+    }
+    return res.data || null;
+  }
+
+  // GET: Consultar historial de movimientos individuales persistidos en RDS (Punto 5.2 y 7.2)
+  async obtenerHistorialVehiculo(idVehiculo = CONFIG.VEHICULO_ID) {
+    // Si ya descubrimos cuál de los prefijos de historial usa el router de FastAPI, usarlo directo
+    if (this.resolvedHistoryEndpoint) {
+      const res = await this.request(this.resolvedHistoryEndpoint(idVehiculo), { method: "GET" });
+      return this._normalizarArrayHistorial(res.data);
+    }
+
+    const candidates = CONFIG.ENDPOINTS.HISTORIAL_CANDIDATES(idVehiculo);
+    let lastError = null;
+
+    for (const path of candidates) {
+      try {
+        const res = await this.request(path, { method: "GET" });
+        // Guardar la ruta exitosa para no probar las demás en siguientes consultas
+        const prefix = path.replace(`/${idVehiculo}`, "");
+        this.resolvedHistoryEndpoint = (id) => `${prefix}/${id}`;
+        return this._normalizarArrayHistorial(res.data);
+      } catch (err) {
+        lastError = err;
+        if (err.status && err.status !== 404) {
+          throw err;
+        }
+      }
+    }
+
+    throw lastError || new Error("No se encontró la ruta de historial en la API.");
+  }
+
+  _normalizarArrayHistorial(data) {
+    if (Array.isArray(data)) return data;
+    if (data && Array.isArray(data.historial)) return data.historial;
+    if (data && Array.isArray(data.movimientos)) return data.movimientos;
+    if (data && Array.isArray(data.resultados)) return data.resultados;
+    return [];
+  }
+
   async obtenerComandosVehiculo(idVehiculo = CONFIG.VEHICULO_ID) {
     const res = await this.request(CONFIG.ENDPOINTS.COMANDOS_VEHICULO(idVehiculo), { method: "GET" });
     return Array.isArray(res.data) ? res.data : [];
   }
 
-  // POST: Registrar y emitir un movimiento individual o DETENER (Punto 7.3)
   async enviarMovimiento(idComando, idVehiculo = CONFIG.VEHICULO_ID) {
     const payload = {
       id_vehiculo: Number(idVehiculo),
@@ -102,19 +140,16 @@ class ApiClient {
     });
   }
 
-  // GET: Consultar catálogo de secuencias DEMO del vehículo (Punto 9.1)
   async obtenerDemosVehiculo(idVehiculo = CONFIG.VEHICULO_ID) {
     const res = await this.request(CONFIG.ENDPOINTS.DEMOS_VEHICULO(idVehiculo), { method: "GET" });
     return Array.isArray(res.data) ? res.data : [];
   }
 
-  // GET: Consultar los pasos que integran una DEMO (Punto 9.1)
   async obtenerMovimientosDemo(idDemo) {
     const res = await this.request(CONFIG.ENDPOINTS.MOVIMIENTOS_DEMO(idDemo), { method: "GET" });
     return Array.isArray(res.data) ? res.data : [];
   }
 
-  // POST: Iniciar secuencia DEMO en segundo plano (Punto 9.2)
   async iniciarDemo(idDemo, idVehiculo = CONFIG.VEHICULO_ID) {
     const payload = {
       id_vehiculo: Number(idVehiculo),
@@ -126,7 +161,6 @@ class ApiClient {
     });
   }
 
-  // POST: Cancelar DEMO en curso (Punto 9.3)
   async cancelarDemo(idVehiculo = CONFIG.VEHICULO_ID) {
     const payload = {
       id_vehiculo: Number(idVehiculo)

@@ -1,29 +1,41 @@
 /**
- * Módulo Cliente WebSocket Seguro (WSS)
- * Abre y mantiene la conexión en tiempo real con AWS para actualizar el indicador WSS
- * y reflejar los eventos emitidos por el backend.
+ * Módulo Cliente WebSocket Seguro Compartido (WSS)
+ * Mantiene UNA sola sesión WSS para CONTROL y MONITOREO, aplica reconexión
+ * con espera progresiva y dispara resincronización REST al recuperar conexión.
  */
 
-import { CONFIG } from "./config.js";
-import { uiState } from "./uiState.js";
+import { CONFIG } from "./config.js?v=8";
+import { uiState } from "./uiState.js?v=8";
 
 class WsClient {
   constructor() {
     this.socket = null;
     this.reconnectTimer = null;
     this.hasConnectedOnce = false;
+    this.reconnectAttempts = 0;
     this.eventListeners = new Set();
+    this.reconnectListeners = new Set();
   }
 
   /**
-   * Permite que otros controladores (como DEMO o Movimientos) escuchen los mensajes WSS.
+   * Suscribe controladores (DEMO, MONITOREO) a los mensajes JSON entrantes.
    */
   onMessage(callback) {
     this.eventListeners.add(callback);
   }
 
+  /**
+   * Suscribe controladores al evento de reconexión exitosa (Punto 6.2 y 7.4).
+   */
+  onReconnect(callback) {
+    this.reconnectListeners.add(callback);
+  }
+
   connect(idVehiculo = CONFIG.VEHICULO_ID) {
-    if (this.socket && (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING)) {
+    if (
+      this.socket &&
+      (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING)
+    ) {
       return;
     }
 
@@ -39,11 +51,19 @@ class WsClient {
     }
 
     this.socket.addEventListener("open", () => {
+      const wasReconnecting = this.hasConnectedOnce;
       this.hasConnectedOnce = true;
+      this.reconnectAttempts = 0;
       uiState.setWsStatus("ONLINE");
+
       if (this.reconnectTimer) {
         clearTimeout(this.reconnectTimer);
         this.reconnectTimer = null;
+      }
+
+      // Punto 6.2 y 7.4: Al reconectar WSS, resincronizar estado e historial por REST
+      if (wasReconnecting) {
+        this.reconnectListeners.forEach((cb) => cb());
       }
     });
 
@@ -56,19 +76,25 @@ class WsClient {
     });
 
     this.socket.addEventListener("close", () => {
-      // Punto 6.2: Si la conexión se pierde, abandona inmediatamente "En línea"
       uiState.setWsStatus("OFFLINE");
       this._scheduleReconnect(idVehiculo);
     });
   }
 
+  // Punto 8.4: Reconexión controlada con espera progresiva (exponential backoff)
   _scheduleReconnect(idVehiculo) {
     if (this.reconnectTimer) return;
+    this.reconnectAttempts += 1;
+    const delay = Math.min(
+      CONFIG.WS_RECONNECT_BASE_MS * Math.pow(1.4, this.reconnectAttempts - 1),
+      CONFIG.WS_RECONNECT_MAX_MS
+    );
+
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
       uiState.setWsStatus("RECONNECTING");
       this.connect(idVehiculo);
-    }, CONFIG.WS_RECONNECT_DELAY_MS);
+    }, Math.round(delay));
   }
 
   _handleIncomingMessage(rawText) {
@@ -79,14 +105,13 @@ class WsClient {
       return;
     }
 
-    // Filtrar eventos que no correspondan al vehículo propio
+    // Punto 8.4: Filtrar estrictamente eventos de otros vehículos
     if (payload.id_vehiculo && Number(payload.id_vehiculo) !== CONFIG.VEHICULO_ID) {
       return;
     }
 
     const evento = payload.evento || "EVENTO";
 
-    // Formatear resumen legible sin inventar atributos (Punto 8.4)
     if (evento === "ESTADO_ACTUAL") {
       uiState.markWsEventReceived(`ESTADO_ACTUAL (Vehículo #${payload.id_vehiculo || CONFIG.VEHICULO_ID})`);
     } else if (evento === "NUEVO_MOVIMIENTO") {
@@ -101,7 +126,6 @@ class WsClient {
       uiState.markWsEventReceived(`${evento} (Vehículo #${payload.id_vehiculo || CONFIG.VEHICULO_ID})`);
     }
 
-    // Notificar a los controladores suscritos
     this.eventListeners.forEach((cb) => cb(payload));
   }
 }

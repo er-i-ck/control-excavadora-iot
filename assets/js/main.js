@@ -1,16 +1,18 @@
 /**
  * Punto de Entrada Principal (main.js)
- * Inicializa la interfaz responsiva, el cliente WSS, la comprobación periódica de salud AWS/RDS,
- * el Joystick táctil/mouse, los botones de movimiento y el controlador de DEMO.
+ * Inicializa CONTROL (Práctica 4.1) y MONITOREO (Práctica 4.2) compartiendo
+ * una única sesión WSS, el cliente REST y los 3 indicadores de infraestructura.
  */
 
-import { CONFIG } from "./config.js";
-import { apiClient } from "./apiClient.js";
-import { wsClient } from "./wsClient.js";
-import { uiState } from "./uiState.js";
-import { movementController } from "./movementController.js";
-import { JoystickComponent } from "./joystick.js";
-import { demoController } from "./demoController.js";
+import { CONFIG } from "./config.js?v=8";
+import { apiClient } from "./apiClient.js?v=8";
+import { wsClient } from "./wsClient.js?v=8";
+import { uiState } from "./uiState.js?v=8";
+import { movementController } from "./movementController.js?v=8";
+import { JoystickComponent } from "./joystick.js?v=8";
+import { demoController } from "./demoController.js?v=8";
+import { navigation } from "./navigation.js?v=8";
+import { monitorController } from "./monitorController.js?v=8";
 
 class AppInitializer {
   constructor() {
@@ -19,37 +21,43 @@ class AppInitializer {
   }
 
   async start() {
-    // 1. Configurar títulos del vehículo desde CONFIG
+    // 1. Configurar títulos del vehículo
     const titleEl = document.getElementById("vehicle-title");
     const subEl = document.getElementById("vehicle-subtitle");
     if (titleEl) titleEl.textContent = CONFIG.VEHICULO_NOMBRE;
-    if (subEl) subEl.textContent = `ID Vehículo: #${CONFIG.VEHICULO_ID} · WSS & REST API (21 servicios)`;
+    if (subEl) subEl.textContent = `ID #${CONFIG.VEHICULO_ID} · Control y Monitoreo WSS/REST`;
 
-    // 2. Inicializar Joystick circular (Punto 4)
+    // 2. Inicializar navegación entre CONTROL y MONITOREO (Punto 3.1 y 7.4)
+    navigation.init();
+    navigation.onViewChange((vistaActiva) => {
+      if (vistaActiva === "monitor") {
+        monitorController.sincronizarTodoPorRest(false);
+      }
+    });
+
+    // 3. Inicializar Joystick circular y botones de CONTROL (Práctica 4.1 intacta)
     this.joystick = new JoystickComponent("joystick-zone", "joystick-knob");
-
-    // 3. Vincular todos los botones de movimiento y DETENER a la misma lógica (Punto 5.2)
     this._bindActionButtons();
 
-    // 4. Iniciar conexión WebSocket Seguro (WSS) en tiempo real (Puntos 6.2 y 8.1)
+    // 4. Abrir la conexión WebSocket Segura (WSS) única compartida (Punto 6.2 y 8.1)
     wsClient.connect(CONFIG.VEHICULO_ID);
 
-    // 5. Ejecutar diagnóstico inicial de AWS y RDS y programar sondeo controlado (Punto 6.3)
+    // 5. Comprobación inicial y periódica de salud AWS y RDS (Punto 6.3)
     await this.checkInfrastructureHealth();
     this.healthTimer = setInterval(
       () => this.checkInfrastructureHealth(),
       CONFIG.HEALTH_POLL_INTERVAL_MS
     );
 
-    // 6. Inicializar catálogo de secuencias DEMO (Punto 9)
-    await demoController.init();
-
-    // 7. Sincronizar catálogo de comandos desde la API (Punto 7.2)
-    this._verifyCatalogCommands();
+    // 6. Inicializar módulo de MONITOREO (Práctica 4.2) y módulo de DEMO (Práctica 4.1)
+    await Promise.allSettled([
+      monitorController.init(),
+      demoController.init(),
+      this._verifyCatalogCommands()
+    ]);
   }
 
   _bindActionButtons() {
-    // Todos los botones con data-command-key invocan movementController (Punto 5.2)
     document.querySelectorAll("[data-command-key]").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
@@ -58,10 +66,14 @@ class AppInitializer {
       });
     });
 
-    // Botón de verificación manual de servicios en el encabezado
     const btnRefresh = document.getElementById("btn-refresh-health");
     if (btnRefresh) {
-      btnRefresh.addEventListener("click", () => this.checkInfrastructureHealth(true));
+      btnRefresh.addEventListener("click", () => {
+        this.checkInfrastructureHealth(true);
+        if (navigation.currentView === "monitor") {
+          monitorController.sincronizarTodoPorRest(true);
+        }
+      });
     }
   }
 
@@ -79,7 +91,7 @@ class AppInitializer {
     try {
       await apiClient.obtenerComandosVehiculo(CONFIG.VEHICULO_ID);
     } catch {
-      // Silencioso: el indicador de AWS/RDS ya reporta cualquier caída de red
+      // Manejado por el indicador de salud AWS/RDS
     }
   }
 }

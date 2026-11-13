@@ -4,37 +4,49 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="color-scheme" content="dark" />
-  <meta name="description" content="Panel de Control IoT para Excavadora RC mediante AWS FastAPI, RDS y WebSocket Seguro (WSS)" />
+  <meta name="description" content="Panel de Control y Monitoreo IoT para Excavadora RC mediante AWS FastAPI, RDS y WebSocket Seguro (WSS)" />
   <meta name="theme-color" content="#0f172a" />
-  <title>Control Excavadora IoT · AWS & WSS</title>
+  <title>Control y Monitoreo Excavadora IoT · AWS & WSS</title>
 
   <link rel="icon" type="image/svg+xml" href="./assets/img/favicon.svg" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
 
-  <!-- Parámetro ?v=5 para forzar al teléfono a descargar el CSS nuevo sin usar caché vieja -->
-  <link rel="stylesheet" href="./assets/css/styles.css?v=6" />
+  <link rel="stylesheet" href="./assets/css/styles.css?v=8" />
 </head>
 <body class="app-viewport">
 
-  <!-- ENCABEZADO + 3 INDICADORES COMPACTOS -->
+  <!-- ENCABEZADO COMPARTIDO: NAVEGACIÓN (CONTROL / MONITOREO) + 3 INDICADORES (Puntos 3.1 y 6.1) -->
   <header class="app-header border-bottom border-secondary-subtle px-2 py-1">
     <div class="header-bar max-w-app mx-auto">
-      
-      <!-- Título y botón verificar -->
+
+      <!-- Identificación del vehículo + Pestañas de Navegación + Botón Verificar -->
       <div class="header-brand">
         <img src="./assets/img/favicon.svg" alt="Icono Excavadora IoT" class="brand-icon" width="22" height="22" />
-        <div class="lh-1 text-truncate">
+        <div class="lh-1 text-truncate me-auto">
           <h1 class="title-main mb-0 fw-bold text-warning text-truncate" id="vehicle-title">Excavadora IoT RC · Unidad 01</h1>
           <span class="subtitle-main text-secondary text-truncate d-block" id="vehicle-subtitle">ID #1 · WSS & REST (21 APIs)</span>
         </div>
-        <button type="button" id="btn-refresh-health" class="btn btn-xs btn-outline-light ms-auto flex-shrink-0" aria-label="Comprobar estado de servicios AWS y RDS">
+
+        <!-- Navegación accesible entre CONTROL y MONITOREO (Punto 3.1 y 3.5) -->
+        <nav class="nav-view-switcher" role="tablist" aria-label="Navegación principal entre Control y Monitoreo">
+          <button type="button" id="tab-btn-control" class="btn-nav-tab active" role="tab" aria-selected="true" aria-controls="view-control">
+            <i class="bi bi-controller" aria-hidden="true"></i>
+            <span>CONTROL</span>
+          </button>
+          <button type="button" id="tab-btn-monitor" class="btn-nav-tab" role="tab" aria-selected="false" aria-controls="view-monitor">
+            <i class="bi bi-activity" aria-hidden="true"></i>
+            <span>MONITOREO</span>
+          </button>
+        </nav>
+
+        <button type="button" id="btn-refresh-health" class="btn btn-xs btn-outline-light flex-shrink-0" aria-label="Comprobar estado de servicios AWS y RDS">
           <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
-          <span class="ms-1">Verificar</span>
+          <span class="d-none d-sm-inline ms-1">Verificar</span>
         </button>
       </div>
 
-      <!-- 3 Indicadores siempre en 1 sola fila horizontal (3 columnas) -->
+      <!-- 3 Indicadores separados compartidos en ambas vistas (Punto 6.1) -->
       <div class="status-grid" role="region" aria-label="Estado de servicios de infraestructura">
         <div id="badge-ws" class="status-pill status-checking" role="status" aria-live="polite">
           <i id="icon-ws" class="bi bi-arrow-repeat spin-icon" aria-hidden="true"></i>
@@ -64,9 +76,13 @@
     </div>
   </header>
 
-  <!-- CONTENIDO PRINCIPAL FIJO (SIN SCROLL) -->
+  <!-- CONTENEDOR PRINCIPAL DE VISTAS -->
   <main class="app-main px-2 py-1">
-    <div class="cockpit-grid max-w-app mx-auto h-100">
+
+    <!-- ======================================================================
+         VISTA 1: CONTROL (Conservada íntegra de la Práctica 4.1)
+         ====================================================================== -->
+    <div id="view-control" class="cockpit-grid max-w-app mx-auto h-100" role="tabpanel" aria-labelledby="tab-btn-control">
 
       <!-- BLOQUE 1: JOYSTICK + BOTÓN PRIORITARIO DETENER -->
       <section class="control-card area-joystick p-2 rounded-3" aria-labelledby="heading-joystick">
@@ -102,8 +118,6 @@
 
       <!-- BLOQUE 2: BARRA DE TRAZABILIDAD + 8 BOTONES DE BRAZO Y AUXILIARES -->
       <div class="area-center d-flex flex-column gap-1 min-h-0">
-        
-        <!-- Barra de evidencia (1. Solicitado | 2. API | 3. WSS) -->
         <section class="telemetry-bar px-2 py-1 rounded-2 flex-shrink-0" aria-label="Evidencia de comunicación de comandos">
           <div class="telemetry-grid text-center">
             <div class="text-truncate">
@@ -122,7 +136,6 @@
           <div id="alert-box" class="alert alert-danger mt-1 mb-0 py-0 px-2 small d-none text-truncate" role="alert" aria-live="assertive"></div>
         </section>
 
-        <!-- 8 Botones en cuadrícula 4x2 compacta -->
         <section class="control-card p-2 rounded-3 flex-grow-1 d-flex flex-column justify-content-between min-h-0" aria-labelledby="heading-actions">
           <h2 id="heading-actions" class="card-heading mb-1 text-uppercase fw-bold text-light flex-shrink-0">
             <i class="bi bi-gear-wide-connected me-1 text-warning" aria-hidden="true"></i>Brazo, Diagonales y Auxiliares
@@ -195,15 +208,102 @@
       </section>
 
     </div>
+
+    <!-- ======================================================================
+         VISTA 2: MONITOREO EN TIEMPO REAL (Práctica 4.2 - Puntos 3, 4 y 5)
+         ====================================================================== -->
+    <div id="view-monitor" class="monitor-grid max-w-app mx-auto h-100 d-none" role="tabpanel" aria-labelledby="tab-btn-monitor" aria-hidden="true">
+
+      <!-- PANEL IZQUIERDO / SUPERIOR: TARJETA DESTACADA DEL ÚLTIMO MOVIMIENTO (Punto 4) -->
+      <section class="control-card monitor-card-last p-2 p-md-3 rounded-3" aria-labelledby="heading-last-move">
+        <div class="d-flex justify-content-between align-items-center mb-1 flex-shrink-0">
+          <h2 id="heading-last-move" class="card-heading mb-0 text-uppercase fw-bold text-warning">
+            <i class="bi bi-radar me-1" aria-hidden="true"></i>Último Movimiento Reportado
+          </h2>
+          <span id="mon-last-sync-badge" class="badge bg-secondary badge-xs">Sincronizando...</span>
+        </div>
+
+        <!-- Movimiento principal destacado -->
+        <div class="last-move-hero my-auto p-2 rounded-3">
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-1 mb-1">
+            <span id="mon-last-vehicle" class="badge bg-dark border border-secondary text-info badge-xs">Vehículo #1</span>
+            <span id="mon-last-code" class="badge bg-dark border border-secondary text-warning badge-xs">Código: —</span>
+          </div>
+
+          <div id="mon-last-movement" class="last-move-title fw-bold text-light text-truncate" aria-live="polite">
+            Cargando estado...
+          </div>
+
+          <div class="last-move-meta mt-2 pt-2 border-top border-secondary-subtle">
+            <div class="meta-item">
+              <span class="meta-label"><i class="bi bi-calendar3 me-1 text-info"></i>Fecha:</span>
+              <strong id="mon-last-date" class="text-light">—</strong>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label"><i class="bi bi-clock-history me-1 text-warning"></i>Hora:</span>
+              <strong id="mon-last-time" class="text-light font-monospace">—</strong>
+            </div>
+            <div class="meta-item meta-full">
+              <span class="meta-label"><i class="bi bi-Cpu me-1 text-secondary"></i>Origen:</span>
+              <span id="mon-last-origin" class="text-secondary text-truncate">Consulta inicial REST</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Nota aclaratoria obligatoria (Punto 4.3 y 8.5) -->
+        <div class="d-flex align-items-center justify-content-between gap-2 mt-1 flex-shrink-0">
+          <small class="text-secondary monitor-disclaimer">
+            <i class="bi bi-info-circle me-1 text-info" aria-hidden="true"></i>Estado reportado por AWS (REST/WSS); no implica ejecución física en motores.
+          </small>
+          <button type="button" id="btn-sync-monitor" class="btn btn-xs btn-outline-info flex-shrink-0">
+            <i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>Sincronizar
+          </button>
+        </div>
+      </section>
+
+      <!-- PANEL DERECHO / INFERIOR: TABLA DINÁMICA DE LOS 10 ÚLTIMOS MOVIMIENTOS (Punto 5) -->
+      <section class="control-card monitor-card-table p-2 p-md-3 rounded-3" aria-labelledby="heading-history-table">
+        <div class="d-flex justify-content-between align-items-center mb-1 flex-shrink-0">
+          <h2 id="heading-history-table" class="card-heading mb-0 text-uppercase fw-bold text-light">
+            <i class="bi bi-table me-1 text-warning" aria-hidden="true"></i>Últimos 10 Movimientos Persistidos (RDS)
+          </h2>
+          <span id="mon-history-badge" class="badge bg-secondary badge-xs">Cargando...</span>
+        </div>
+
+        <div id="mon-alert-box" class="alert alert-danger py-1 px-2 mb-1 small d-none flex-shrink-0" role="alert"></div>
+
+        <!-- Contenedor de tabla adaptable sin cortar columnas ni desbordar la página (Punto 3.4 y 5.1) -->
+        <div class="monitor-table-wrapper flex-grow-1">
+          <table class="table table-dark table-striped table-hover table-sm mb-0 align-middle monitor-table" aria-label="Tabla de los últimos diez movimientos individuales del vehículo">
+            <thead>
+              <tr>
+                <th scope="col" class="col-idx">#</th>
+                <th scope="col">Movimiento</th>
+                <th scope="col">Código / ID</th>
+                <th scope="col">Fecha</th>
+                <th scope="col">Hora</th>
+              </tr>
+            </thead>
+            <tbody id="mon-history-tbody">
+              <tr>
+                <td colspan="5" class="text-center text-secondary py-3">Cargando últimos movimientos desde Amazon RDS...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </div>
+
   </main>
 
-  <!-- CRÉDITOS FIJOS EN LA PARTE INFERIOR -->
+  <!-- CRÉDITOS FIJOS EN LA PARTE INFERIOR COMPARTIDOS EN TODA LA APLICACIÓN (Punto 3.2) -->
   <footer class="app-footer text-center py-1 px-2 border-top border-secondary-subtle flex-shrink-0">
     <p class="mb-0 footer-credits text-secondary">
       Desarrollado por <strong class="text-light">Erick Alejandro Rojas Trejo</strong> · 2026
     </p>
   </footer>
 
-  <script type="module" src="./assets/js/main.js?v=7"></script>
+  <script type="module" src="./assets/js/main.js?v=8"></script>
 </body>
 </html>
