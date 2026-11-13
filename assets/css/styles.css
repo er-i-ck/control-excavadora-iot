@@ -1,83 +1,492 @@
 /* ==========================================================================
-   AMPLIACIÓN PRÁCTICA 4.2: NAVEGACIÓN Y MÓDULO DE MONITOREO RESPONSIVO
+   HOJA DE ESTILOS COMPLETA (PRÁCTICAS 4.1 Y 4.2) - FIJA EN 100dvh SIN SCROLL
    ========================================================================== */
 
-/* Selector de vista CONTROL / MONITOREO con área táctil accesible (Puntos 3.1 y 3.5) */
-.nav-view-switcher {
-  display: inline-flex;
-  background-color: #0b1120;
-  border: 1px solid #475569;
-  border-radius: 0.45rem;
-  padding: 2px;
-  gap: 2px;
+:root {
+  color-scheme: dark;
+  --bg-main: #0f172a;
+  --bg-card: #1e293b;
+  --bg-surface: #0b1120;
+  --border-color: #334155;
+  --accent-amber: #f59e0b;
+  --accent-cyan: #38bdf8;
+  --text-light: #f8fafc;
+  --text-muted: #94a3b8;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body.app-viewport {
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden; /* Impide que la pantalla se desplace hacia abajo */
+  background-color: var(--bg-main);
+  color: var(--text-light);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif;
+  user-select: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.max-w-app {
+  max-width: 1180px;
+  width: 100%;
+}
+
+.app-header,
+.app-footer {
+  background-color: var(--bg-surface);
   flex-shrink: 0;
 }
 
-.btn-nav-tab {
-  background: transparent;
-  color: var(--text-muted);
-  border: none;
-  border-radius: 0.35rem;
-  padding: 0.22rem 0.6rem;
-  min-height: 30px;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.btn-nav-tab:hover {
-  color: var(--text-light);
-}
-
-.btn-nav-tab:focus-visible {
-  outline: 2px solid var(--accent-cyan);
-  outline-offset: 1px;
-}
-
-.btn-nav-tab.active {
-  background-color: var(--accent-amber);
-  color: #0f172a;
-  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.35);
-}
-
-/* Rejilla de la vista MONITOREO (Vertical: Último movimiento arriba, Tabla abajo) */
-.monitor-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  grid-template-rows: auto minmax(0, 1fr);
-  gap: 0.4rem;
+.app-main {
+  flex: 1 1 0%;
   min-height: 0;
   overflow: hidden;
 }
 
-/* Tarjeta destacada del Último Movimiento Reportado (Punto 4.1) */
+/* Encabezado y Pestañas CONTROL / MONITOREO */
+.header-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.title-main {
+  font-size: 0.8rem;
+}
+
+.subtitle-main {
+  font-size: 0.58rem;
+}
+
+.btn-xs {
+  padding: 0.12rem 0.42rem;
+  font-size: 0.68rem;
+  min-height: 26px;
+}
+
+.badge-xs {
+  font-size: 0.62rem;
+  padding: 0.16em 0.42em;
+}
+
+/* Selector de vista protegido contra inversión de colores en Android Dark Mode */
+.nav-view-switcher {
+  display: inline-flex;
+  background-color: #0b1120;
+  border: 1px solid #475569;
+  border-radius: 0.4rem;
+  padding: 2px;
+  gap: 2px;
+  flex-shrink: 0;
+  forced-color-adjust: none;
+}
+
+.btn-nav-tab {
+  background: transparent;
+  color: #94a3b8;
+  border: 1px solid transparent;
+  border-radius: 0.3rem;
+  padding: 0.18rem 0.48rem;
+  min-height: 26px;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+  forced-color-adjust: none;
+}
+
+.btn-nav-tab.active {
+  background-color: rgba(56, 189, 248, 0.22) !important;
+  color: #ffffff !important;
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.35);
+}
+
+/* 3 Indicadores de estado en 1 sola fila horizontal */
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.25rem;
+}
+
+.status-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.16rem 0.32rem;
+  border-radius: 0.35rem;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-card);
+  font-size: 0.62rem;
+  min-width: 0;
+}
+
+.status-pill i {
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+
+.status-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.05;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.status-label {
+  font-size: 0.5rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-text strong {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-online {
+  border-color: #22c55e;
+  background-color: rgba(34, 197, 94, 0.14);
+  color: #4ade80;
+}
+
+.status-checking {
+  border-color: #f59e0b;
+  background-color: rgba(245, 158, 11, 0.14);
+  color: #fbbf24;
+}
+
+.status-offline {
+  border-color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.16);
+  color: #f87171;
+}
+
+.status-unverified {
+  border-color: #64748b;
+  background-color: rgba(100, 116, 139, 0.16);
+  color: #cbd5e1;
+}
+
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
+
+.spin-icon {
+  display: inline-block;
+  animation: spin 1.4s linear infinite;
+}
+
+/* ==========================================================================
+   VISTA 1: CONTROL (Diseño de dos columnas + DEMO abajo en Vertical)
+   ========================================================================== */
+.control-view-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.telemetry-bar {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+}
+
+.telemetry-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.2rem;
+  align-items: center;
+}
+
+.telemetry-title {
+  font-size: 0.52rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.telemetry-value {
+  font-size: 0.64rem;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Rejilla de Control igual al diseño aprobado:
+   Izquierda: Dirección y Joystick | Derecha: Brazo y Auxiliares | Abajo: DEMO */
+.cockpit-columns {
+  display: grid;
+  grid-template-columns: 47% 1fr;
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "joystick actions"
+    "demo demo";
+  gap: 0.35rem;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.card-joystick { grid-area: joystick; }
+.card-actions  { grid-area: actions; }
+.card-demo     { grid-area: demo; }
+
+.control-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.card-heading {
+  font-size: 0.66rem;
+  letter-spacing: 0.2px;
+}
+
+/* Joystick Circular */
+.joystick-wrapper {
+  flex: 1 1 0%;
+  min-height: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2px;
+}
+
+.joystick-zone {
+  position: relative;
+  width: clamp(115px, min(38vw, 25dvh), 180px);
+  height: clamp(115px, min(38vw, 25dvh), 180px);
+  border-radius: 50%;
+  background: radial-gradient(circle, #1e293b 0%, #0f172a 75%);
+  border: 2.5px solid #475569;
+  box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.65);
+  touch-action: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  outline: none;
+}
+
+.joystick-zone.is-active {
+  border-color: var(--accent-amber);
+}
+
+.joystick-center-mark {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px dashed #64748b;
+  pointer-events: none;
+}
+
+.joystick-knob {
+  position: absolute;
+  width: clamp(44px, min(14vw, 9.5dvh), 64px);
+  height: clamp(44px, min(14vw, 9.5dvh), 64px);
+  border-radius: 50%;
+  background: linear-gradient(145deg, #f59e0b, #d97706);
+  color: #0f172a;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 1.2rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.55);
+  border: 2px solid #fef3c7;
+  cursor: grab;
+  transition: transform 0.08s ease-out, background 0.15s ease;
+  will-change: transform;
+  forced-color-adjust: none;
+}
+
+.joystick-knob.is-dragging {
+  cursor: grabbing;
+  transition: none;
+  background: linear-gradient(145deg, #38bdf8, #0284c7);
+  color: #fff;
+}
+
+.joy-cardinal {
+  position: absolute;
+  color: #64748b;
+  font-size: 0.75rem;
+  pointer-events: none;
+}
+.joy-n { top: 3px; }
+.joy-s { bottom: 3px; }
+.joy-w { left: 5px; }
+.joy-e { right: 5px; }
+
+/* Botón prioritario DETENER */
+.btn-stop-priority {
+  min-height: 38px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.3px;
+  border: 1.5px solid #fca5a5;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.35);
+}
+
+/* Rejilla 2x4 de Brazo y Auxiliares */
+.action-grid {
+  flex: 1 1 0%;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(4, minmax(0, 1fr));
+  gap: 0.28rem;
+}
+
+.btn-control,
+.btn-aux {
+  min-height: 0;
+  height: 100%;
+  padding: 0.12rem 0.22rem;
+  background-color: #0f172a;
+  color: var(--text-light);
+  border: 1px solid #475569;
+  font-weight: 600;
+  font-size: 0.66rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  line-height: 1.05;
+  border-radius: 0.4rem;
+  transition: all 0.15s ease;
+  forced-color-adjust: none;
+}
+
+.btn-control i,
+.btn-aux i {
+  font-size: 0.9rem;
+  margin-bottom: 1px;
+}
+
+.btn-control.is-sending,
+.btn-aux.is-sending {
+  border-color: var(--accent-amber);
+  background-color: rgba(245, 158, 11, 0.22);
+  color: #fde68a;
+}
+
+.btn-control.is-active,
+.btn-aux.is-active {
+  border-color: var(--accent-cyan);
+  background-color: rgba(56, 189, 248, 0.28);
+  color: #fff;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+}
+
+.btn-control.is-error,
+.btn-aux.is-error {
+  border-color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.25);
+}
+
+/* Controles de DEMO */
+.demo-controls-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.demo-btn-group {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.demo-select,
+.btn-demo {
+  height: 30px;
+  min-height: 30px;
+  padding: 0.12rem 0.45rem;
+  font-size: 0.68rem;
+}
+
+.demo-preview {
+  background-color: #0b1120 !important;
+  color: #cbd5e1 !important;
+  border: 1px solid var(--border-color);
+  font-size: 0.62rem;
+  height: 30px;
+  overflow-y: auto;
+  forced-color-adjust: none;
+}
+
+.demo-preview .badge {
+  background-color: #1e293b !important;
+  color: #fbbf24 !important;
+  border: 1px solid #475569 !important;
+  font-weight: 600;
+  forced-color-adjust: none;
+}
+
+/* ==========================================================================
+   VISTA 2: MONITOREO (Fija en 100dvh sin deslizar toda la página)
+   ========================================================================== */
+.monitor-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0.35rem;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .last-move-hero {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-color);
 }
 
 .last-move-title {
-  font-size: clamp(1rem, 2.6vw, 1.35rem);
+  font-size: 0.92rem;
   color: #38bdf8 !important;
-  letter-spacing: 0.2px;
 }
 
 .last-move-meta {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.25rem 0.5rem;
-  font-size: 0.7rem;
+  gap: 0.15rem 0.4rem;
+  font-size: 0.64rem;
 }
 
 .meta-item {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.22rem;
   min-width: 0;
 }
 
@@ -91,24 +500,24 @@
 }
 
 .monitor-disclaimer {
-  font-size: 0.6rem;
-  line-height: 1.15;
+  font-size: 0.56rem;
 }
 
-/* Tabla Dinámica de los 10 Movimientos Persistidos (Punto 3.4 y 5.1) */
+/* Tabla compacta para que las 10 filas se vean limpias dentro de la tarjeta */
 .monitor-table-wrapper {
+  flex: 1 1 0%;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   border: 1px solid var(--border-color);
-  border-radius: 0.4rem;
+  border-radius: 0.38rem;
   background-color: var(--bg-surface);
 }
 
 .monitor-table {
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   width: 100%;
-  table-layout: auto;
+  margin-bottom: 0;
 }
 
 .monitor-table thead th {
@@ -116,30 +525,86 @@
   top: 0;
   background-color: #0f172a;
   color: var(--text-muted);
-  font-size: 0.62rem;
+  font-size: 0.56rem;
   text-transform: uppercase;
-  letter-spacing: 0.3px;
+  padding: 0.22rem 0.35rem;
   border-bottom: 1px solid #475569;
-  padding: 0.3rem 0.4rem;
   z-index: 1;
 }
 
 .monitor-table tbody td {
-  padding: 0.25rem 0.4rem;
+  padding: 0.18rem 0.35rem;
   border-color: #1e293b;
   vertical-align: middle;
+  line-height: 1.15;
 }
 
 .col-idx {
-  width: 28px;
+  width: 22px;
 }
 
-/* En Horizontal (Landscape) y Escritorio: Último Movimiento a la izquierda (35%) y Tabla a la derecha (65%) */
+.footer-credits {
+  font-size: 0.6rem;
+}
+
+/* ==========================================================================
+   MODO HORIZONTAL (LANDSCAPE) Y PANTALLAS DE ESCRITORIO
+   ========================================================================== */
 @media (orientation: landscape), (min-width: 768px) {
-  .monitor-grid {
-    grid-template-columns: 35% 1fr;
+  .header-bar {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.4rem;
+  }
+
+  .subtitle-main {
+    display: none !important;
+  }
+
+  .status-grid {
+    flex: 1 1 auto;
+    max-width: 500px;
+  }
+
+  /* En horizontal, CONTROL muestra las 3 tarjetas lado a lado */
+  .cockpit-columns {
+    grid-template-columns: 30% 38% 1fr;
     grid-template-rows: minmax(0, 1fr);
-    gap: 0.5rem;
+    grid-template-areas: "joystick actions demo";
+  }
+
+  .joystick-zone {
+    width: clamp(84px, 32dvh, 145px);
+    height: clamp(84px, 32dvh, 145px);
+  }
+
+  .joystick-knob {
+    width: clamp(32px, 12dvh, 52px);
+    height: clamp(32px, 12dvh, 52px);
+  }
+
+  .demo-controls-row {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
+  }
+
+  .demo-btn-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .demo-preview {
+    flex: 1 1 0%;
+    height: auto;
+    min-height: 0;
+  }
+
+  /* En horizontal, MONITOREO muestra Último Movimiento a la izquierda y Tabla a la derecha */
+  .monitor-grid {
+    grid-template-columns: 34% 1fr;
+    grid-template-rows: minmax(0, 1fr);
+    gap: 0.45rem;
   }
 
   .last-move-meta {
@@ -148,21 +613,17 @@
 }
 
 @media (min-width: 992px) and (min-height: 600px) {
-  .btn-nav-tab {
-    font-size: 0.76rem;
-    padding: 0.3rem 0.85rem;
+  .subtitle-main {
+    display: block !important;
   }
-
-  .monitor-table {
+  .btn-control,
+  .btn-aux {
     font-size: 0.78rem;
   }
-
-  .monitor-table thead th {
-    font-size: 0.7rem;
-    padding: 0.45rem 0.6rem;
+  .monitor-table {
+    font-size: 0.76rem;
   }
-
   .monitor-table tbody td {
-    padding: 0.38rem 0.6rem;
+    padding: 0.35rem 0.55rem;
   }
 }
