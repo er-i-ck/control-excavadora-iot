@@ -89,6 +89,7 @@ class MovementController {
     const currentSeq = ++this.requestSequence;
 
     uiState.setButtonState(commandKey, "sending");
+    window.dispatchEvent(new CustomEvent("iot-guest-activity"));
     uiState.markCommandRequested(cmdInfo.etiqueta, cmdInfo.codigo);
 
     try {
@@ -154,3 +155,4 @@ class MovementController {
 }
 
 export const movementController = new MovementController();
+

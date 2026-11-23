@@ -14,6 +14,7 @@
 
   <link rel="stylesheet" href="./assets/css/styles.css?v=9" />
   <link rel="stylesheet" href="./assets/css/admin.css?v=20" />
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body class="app-viewport">
 
@@ -346,6 +347,38 @@
               </button>
             </form>
             <div id="login-error-box" class="alert alert-danger mt-2 mb-0 py-1 px-2 small d-none" role="alert"></div>
+
+            <div class="d-flex align-items-center my-2">
+              <hr class="flex-grow-1 border-secondary my-0" />
+              <span class="px-2 small text-secondary">o continúa con</span>
+              <hr class="flex-grow-1 border-secondary my-0" />
+            </div>
+            <div id="google-signin-btn" class="d-flex justify-content-center mb-2"></div>
+
+            <div class="text-center mt-2">
+              <button type="button" id="btn-toggle-registro" class="btn btn-link btn-sm text-info text-decoration-none p-0">
+                ¿No tienes cuenta? Regístrate aquí
+              </button>
+            </div>
+
+            <form id="form-registro" class="d-none mt-2 pt-2 border-top border-secondary" novalidate>
+              <h3 class="small text-uppercase text-info fw-bold mb-2">Crear cuenta nueva (Usuario)</h3>
+              <div class="mb-2">
+                <label for="reg-nombre" class="form-label small mb-1">Nombre completo</label>
+                <input type="text" id="reg-nombre" class="form-control form-control-sm bg-dark text-light border-secondary" required />
+              </div>
+              <div class="mb-2">
+                <label for="reg-correo" class="form-label small mb-1">Correo electrónico</label>
+                <input type="email" id="reg-correo" class="form-control form-control-sm bg-dark text-light border-secondary" required />
+              </div>
+              <div class="mb-2">
+                <label for="reg-password" class="form-label small mb-1">Contraseña (mín. 6 caracteres)</label>
+                <input type="password" id="reg-password" class="form-control form-control-sm bg-dark text-light border-secondary" minlength="6" required />
+              </div>
+              <button type="submit" id="btn-submit-registro" class="btn btn-info btn-sm w-100 fw-bold text-dark">
+                <i class="bi bi-person-plus-fill me-1" aria-hidden="true"></i>Crear cuenta y entrar
+              </button>
+            </form>
           </div>
         </div>
 
@@ -401,7 +434,7 @@
           </div>
           <p id="invitado-panel-detalle" class="small text-light mb-2"></p>
           <p class="small text-secondary mb-3">
-            Comandos habilitados por seguridad física: <strong>Avanzar, Retroceder, Girar Izquierda, Girar Derecha y DETENER</strong>. Al expirar el tiempo o finalizar, se envía paro seguro y se libera la reserva.
+            Comandos habilitados: <strong>Avanzar, Retroceder, Izquierda, Derecha, Diagonales y DETENER</strong>. Si no mueves el vehículo por <strong>45 segundos</strong>, la sesión se cierra automáticamente para liberar la unidad. Al expirar el tiempo o finalizar, se envía paro seguro y se libera la reserva.
           </p>
           <div class="d-flex flex-wrap gap-2">
             <button type="button" id="btn-invitado-ir-control" class="btn btn-warning btn-sm fw-bold text-dark">
@@ -763,3 +796,4 @@
   <script type="module" src="./assets/js/main.js?v=20"></script>
 </body>
 </html>
+

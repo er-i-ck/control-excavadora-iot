@@ -1,5 +1,5 @@
 ﻿/**
- * Módulo de Configuración Centralizada (Compartido entre CONTROL, MONITOREO y ADMINISTRACIÓN - v20)
+ * Módulo de Configuración Centralizada (v20)
  */
 
 const COMANDOS_MAP = {
@@ -21,6 +21,7 @@ const COMANDOS_MAP = {
 export const CONFIG = Object.freeze({
   API_BASE_URL: "https://api-vehiculo-erick.duckdns.org",
   WS_BASE_URL: "wss://api-vehiculo-erick.duckdns.org/ws",
+  GOOGLE_CLIENT_ID: "469048615486-8jaebc0175cfl19a18ph7crrheiuba3q.apps.googleusercontent.com",
 
   VEHICULO_ID: 1,
   VEHICULO_NOMBRE: "Plataforma Vehículos IoT · AWS & RDS",
@@ -32,11 +33,14 @@ export const CONFIG = Object.freeze({
   WS_RECONNECT_BASE_MS: 3000,
   WS_RECONNECT_MAX_MS: 15000,
   JOYSTICK_COOLDOWN_MS: 180,
+  GUEST_INACTIVITY_MS: 45000, // 45 seg sin mover el carrito libera la sesión de invitado
 
   ENDPOINTS: {
     SALUD_API: "/",
     SALUD_DETALLE: "/salud",
     AUTH_LOGIN: "/auth/login",
+    AUTH_REGISTRO: "/auth/registro",
+    AUTH_GOOGLE: "/auth/google",
     AUTH_ME: "/auth/me",
     AUTH_LOGOUT: "/auth/logout",
     MIS_VEHICULOS: "/mis-vehiculos",
@@ -77,11 +81,24 @@ export function resolverComandoInfo(idOrName) {
   if (idOrName === null || idOrName === undefined) return null;
   const num = Number(idOrName);
   const str = String(idOrName).trim().toUpperCase();
-
   for (const cmd of Object.values(COMANDOS_MAP)) {
     if ((!Number.isNaN(num) && (cmd.id === num || cmd.codigo === num)) || cmd.nombre === str) {
       return cmd;
     }
   }
   return null;
+}
+
+export function obtenerIconoVehiculo(nombre = "", modelo = "") {
+  const txt = `${nombre} ${modelo}`.toLowerCase();
+  if (txt.includes("excavadora") || txt.includes("grua") || txt.includes("exc")) {
+    return '<i class="bi bi-truck-front-fill text-warning me-1" aria-hidden="true"></i>';
+  }
+  if (txt.includes("batman") || txt.includes("bat") || txt.includes("deportivo")) {
+    return '<i class="bi bi-lightning-charge-fill text-info me-1" aria-hidden="true"></i>';
+  }
+  if (txt.includes("prueba") || txt.includes("test")) {
+    return '<i class="bi bi-cpu-fill text-success me-1" aria-hidden="true"></i>';
+  }
+  return '<i class="bi bi-car-front-fill text-light me-1" aria-hidden="true"></i>';
 }

@@ -93,6 +93,24 @@ class ApiClient {
   }
 
   // ===== AUTENTICACIÓN =====
+  async registrarCuenta(nombre, correo, password) {
+    const res = await this.request(CONFIG.ENDPOINTS.AUTH_REGISTRO, {
+      method: "POST",
+      skipAuth: true,
+      body: JSON.stringify({ nombre, correo, password })
+    });
+    return res.data;
+  }
+
+  async loginConGoogle(idToken) {
+    const res = await this.request(CONFIG.ENDPOINTS.AUTH_GOOGLE, {
+      method: "POST",
+      skipAuth: true,
+      body: JSON.stringify({ id_token: idToken })
+    });
+    return res.data;
+  }
+
   async login(correo, password) {
     const res = await this.request(CONFIG.ENDPOINTS.AUTH_LOGIN, {
       method: "POST",
@@ -285,8 +303,13 @@ class ApiClient {
     return res.data;
   }
 
-  async obtenerAuditoriaAdmin(limit = 40) {
-    const res = await this.request(`${CONFIG.ENDPOINTS.ADMIN_AUDITORIA}?limit=${limit}`, { method: "GET" });
+  async obtenerAuditoriaAdmin(filtros = {}) {
+    const params = new URLSearchParams();
+    params.set("limit", String(filtros.limit || 50));
+    if (filtros.fecha_inicio) params.set("fecha_inicio", filtros.fecha_inicio);
+    if (filtros.fecha_fin) params.set("fecha_fin", filtros.fecha_fin);
+    if (filtros.accion) params.set("accion", filtros.accion);
+    const res = await this.request(`${CONFIG.ENDPOINTS.ADMIN_AUDITORIA}?${params.toString()}`, { method: "GET" });
     return Array.isArray(res.data) ? res.data : [];
   }
 
@@ -316,3 +339,5 @@ class ApiClient {
 }
 
 export const apiClient = new ApiClient();
+
+

@@ -2,7 +2,7 @@
  * Controlador de Administración, Roles, Mis Vehículos, Editor de DEMOs e Invitados (v20)
  */
 
-import { CONFIG } from "./config.js?v=20";
+import { CONFIG, obtenerIconoVehiculo } from "./config.js?v=20";
 import { apiClient } from "./apiClient.js?v=20";
 import { sessionStore } from "./sessionStore.js?v=20";
 import { navigation } from "./navigation.js?v=20";
@@ -20,6 +20,7 @@ class AdminController {
     this.editorPasos = [];
     this.editorComandosUnidad = [];
     this.guestCountdownInterval = null;
+    this.guestInactivityTimer = null;
     this.onSessionReadyCallback = null;
     this.onVehicleSelectedCallback = null;
     this.onDemosUpdatedCallback = null;
@@ -72,6 +73,39 @@ class AdminController {
 
     document.getElementById("btn-reload-dashboard")?.addEventListener("click", () => this.cargarDashboard());
     document.getElementById("btn-reload-auditoria")?.addEventListener("click", () => this.cargarAuditoria());
+    document.getElementById("btn-filtrar-auditoria")?.addEventListener("click", () => this.cargarAuditoria());
+    document.getElementById("btn-limpiar-auditoria")?.addEventListener("click", () => {
+      const f1 = document.getElementById("audit-fecha-inicio");
+      const f2 = document.getElementById("audit-fecha-fin");
+      const ac = document.getElementById("audit-tipo-accion");
+      if (f1) f1.value = "";
+      if (f2) f2.value = "";
+      if (ac) ac.value = "";
+      this.cargarAuditoria();
+    });
+
+    document.getElementById("btn-toggle-registro")?.addEventListener("click", () => {
+      const fReg = document.getElementById("form-registro");
+      const fLog = document.getElementById("form-login");
+      const btn = document.getElementById("btn-toggle-registro");
+      const mostrandoReg = fReg && !fReg.classList.contains("d-none");
+      fReg?.classList.toggle("d-none", mostrandoReg);
+      fLog?.classList.toggle("d-none", !mostrandoReg);
+      if (btn) btn.textContent = mostrandoReg ? "¿No tienes cuenta? Regístrate aquí" : "¿Ya tienes cuenta? Inicia sesión";
+    });
+
+    document.getElementById("form-registro")?.addEventListener("submit", (e) => {
+      e.preventDefault();
+      this._handleRegistroSubmit();
+    });
+
+    window.addEventListener("iot-guest-activity", () => {
+      if (sessionStore.getRole() === "INVITADO") {
+        this._resetGuestInactivityTimer();
+      }
+    });
+
+    this._initGoogleSignIn();
     document.getElementById("btn-reload-mis-vehiculos")?.addEventListener("click", () => this.renderMisVehiculos());
 
     document.getElementById("form-modelo")?.addEventListener("submit", (e) => {
@@ -217,6 +251,92 @@ class AdminController {
     }
   }
 
+  async _handleRegistroSubmit() {
+    const nombre = document.getElementById("reg-nombre")?.value.trim() || "";
+    const correo = document.getElementById("reg-correo")?.value.trim() || "";
+    const password = document.getElementById("reg-password")?.value || "";
+    const errBox = document.getElementById("login-error-box");
+    errBox?.classList.add("d-none");
+
+    try {
+      const data = await apiClient.registrarCuenta(nombre, correo, password);
+      sessionStore.setSession(data.access_token, {
+        tipo: "USUARIO",
+        id_usuario: data.usuario.id_usuario,
+        id_sesion_invitado: null,
+        nombre: data.usuario.nombre,
+        correo: data.usuario.correo,
+        rol: data.usuario.rol,
+        id_vehiculo_reservado: null,
+        comandos_permitidos: null,
+        expira_en: data.expira_en
+      });
+      document.getElementById("form-registro")?.reset();
+      if (this.onSessionReadyCallback) await this.onSessionReadyCallback();
+    } catch (error) {
+      if (errBox) {
+        errBox.textContent = error.message || "No se pudo crear la cuenta.";
+        errBox.classList.remove("d-none");
+      }
+    }
+  }
+
+  _initGoogleSignIn(intentos = 0) {
+    const container = document.getElementById("google-signin-btn");
+    if (!container || !CONFIG.GOOGLE_CLIENT_ID) return;
+    if (!window.google?.accounts?.id) {
+      if (intentos < 15) setTimeout(() => this._initGoogleSignIn(intentos + 1), 400);
+      return;
+    }
+    window.google.accounts.id.initialize({
+      client_id: CONFIG.GOOGLE_CLIENT_ID,
+      callback: (response) => this._handleGoogleCredential(response)
+    });
+    container.innerHTML = "";
+    window.google.accounts.id.renderButton(container, {
+      theme: "filled_black",
+      size: "medium",
+      text: "continue_with",
+      shape: "pill",
+      width: 260
+    });
+  }
+
+  async _handleGoogleCredential(response) {
+    const errBox = document.getElementById("login-error-box");
+    errBox?.classList.add("d-none");
+    try {
+      const data = await apiClient.loginConGoogle(response.credential);
+      sessionStore.setSession(data.access_token, {
+        tipo: "USUARIO",
+        id_usuario: data.usuario.id_usuario,
+        id_sesion_invitado: null,
+        nombre: data.usuario.nombre,
+        correo: data.usuario.correo,
+        rol: data.usuario.rol,
+        id_vehiculo_reservado: null,
+        comandos_permitidos: null,
+        expira_en: data.expira_en
+      });
+      if (this.onSessionReadyCallback) await this.onSessionReadyCallback();
+    } catch (error) {
+      if (errBox) {
+        errBox.textContent = error.message || "Error al iniciar sesión con Google.";
+        errBox.classList.remove("d-none");
+      }
+    }
+  }
+
+  _resetGuestInactivityTimer() {
+    if (this.guestInactivityTimer) clearTimeout(this.guestInactivityTimer);
+    if (sessionStore.getRole() !== "INVITADO") return;
+    this.guestInactivityTimer = setTimeout(() => {
+      if (sessionStore.getRole() === "INVITADO") {
+        this.finalizarPruebaInvitado(true, "Sesión cerrada por inactividad (45s sin movimiento) para liberar la unidad.");
+      }
+    }, CONFIG.GUEST_INACTIVITY_MS);
+  }
+
   async cargarCatalogoPublico() {
     const contUnidades = document.getElementById("catalogo-exhibicion-container");
     const contModelos = document.getElementById("catalogo-modelos-container");
@@ -242,7 +362,7 @@ class AdminController {
             <div class="p-2 rounded border border-secondary bg-dark h-100 d-flex flex-column justify-content-between">
               <div>
                 <div class="d-flex justify-content-between align-items-center mb-1">
-                  <strong class="text-warning small">${this._esc(u.nombre)}</strong>
+                  <strong class="text-warning small">${obtenerIconoVehiculo(u.nombre, u.modelo_nombre)}${this._esc(u.nombre)}</strong>
                   ${estadoBadge}
                 </div>
                 <div class="small text-secondary mb-2">
@@ -350,17 +470,20 @@ class AdminController {
     };
     tick();
     this.guestCountdownInterval = setInterval(tick, 1000);
+    this._resetGuestInactivityTimer();
   }
 
   _stopGuestCountdown() {
+    if (this.guestInactivityTimer) { clearTimeout(this.guestInactivityTimer); this.guestInactivityTimer = null; }
     if (this.guestCountdownInterval) {
       clearInterval(this.guestCountdownInterval);
       this.guestCountdownInterval = null;
+    this.guestInactivityTimer = null;
     }
     document.getElementById("guest-timer-badge")?.classList.add("d-none");
   }
 
-  async finalizarPruebaInvitado(porExpiracion = false) {
+  async finalizarPruebaInvitado(porExpiracion = false, mensajePersonalizado = null) {
     this._stopGuestCountdown();
     const idVeh = sessionStore.getActiveVehicleId();
     if (idVeh) {
@@ -376,12 +499,10 @@ class AdminController {
       // Ignorar si ya expiró
     }
     if (this.onLogoutCallback) await this.onLogoutCallback(true);
-    this.showFeedback(
-      porExpiracion
-        ? "Tu sesión temporal de invitado expiró. Se envió detención segura y se liberó la unidad."
-        : "Sesión de invitado finalizada y unidad de exhibición liberada.",
-      "warning"
-    );
+    const msg = mensajePersonalizado || (porExpiracion
+      ? "Tu sesión temporal de invitado expiró. Se envió detención segura y se liberó la unidad."
+      : "Sesión de invitado finalizada y unidad de exhibición liberada.");
+    this.showFeedback(msg, "warning");
   }
 
   async cargarDashboard() {
@@ -567,7 +688,7 @@ class AdminController {
 
           return `<tr>
             <td><strong>#${u.id_vehiculo}</strong><div class="text-info small">${this._esc(u.codigo_serie || "—")}</div></td>
-            <td>${this._esc(u.nombre)}<div class="text-secondary small">${this._esc(u.modelo_nombre || "Sin modelo")}</div></td>
+            <td>${obtenerIconoVehiculo(u.nombre, u.modelo_nombre)}${this._esc(u.nombre)}<div class="text-secondary small">${this._esc(u.modelo_nombre || "Sin modelo")}</div></td>
             <td><span class="badge ${bCls} badge-xs">${this._esc(u.estado_operativo)}</span></td>
             <td>${ownerTxt}</td>
             <td class="text-nowrap">
@@ -759,7 +880,7 @@ class AdminController {
         <div class="col-12 col-md-6">
           <div class="admin-card p-3 rounded-3 h-100 ${isCurrent ? "vehicle-card-active" : ""}">
             <div class="d-flex justify-content-between align-items-center mb-1">
-              <strong class="text-warning">${this._esc(v.nombre)}</strong>
+              <strong class="text-warning">${obtenerIconoVehiculo(v.nombre, v.modelo_nombre)}${this._esc(v.nombre)}</strong>
               <span class="badge ${isCurrent ? "bg-warning text-dark" : "bg-secondary"} badge-xs">${isCurrent ? "ACTIVA" : v.estado_operativo}</span>
             </div>
             <div class="small text-secondary mb-2">
@@ -1036,7 +1157,12 @@ class AdminController {
     tbody.innerHTML = '<tr><td colspan="7" class="text-center text-secondary">Cargando bitácora...</td></tr>';
 
     try {
-      const logs = await apiClient.obtenerAuditoriaAdmin(50);
+      const logs = await apiClient.obtenerAuditoriaAdmin({
+        limit: 80,
+        fecha_inicio: document.getElementById("audit-fecha-inicio")?.value || "",
+        fecha_fin: document.getElementById("audit-fecha-fin")?.value || "",
+        accion: document.getElementById("audit-tipo-accion")?.value || ""
+      });
       tbody.innerHTML = logs.length
         ? logs
             .map((l) => {
@@ -1069,3 +1195,5 @@ class AdminController {
 }
 
 export const adminController = new AdminController();
+
+
