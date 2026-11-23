@@ -93,3 +93,12 @@ textarea:focus-visible {
     max-width: 145px;
   }
 }
+
+/* Corrige el recuadro blanco del iframe de Google en modo oscuro */
+#google-signin-btn,
+#google-signin-btn iframe {
+  color-scheme: light !important;
+  background: transparent !important;
+  border-radius: 999px;
+  overflow: hidden;
+}
