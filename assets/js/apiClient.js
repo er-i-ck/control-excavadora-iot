@@ -1,15 +1,20 @@
-/**
- * Módulo Cliente REST (Fetch API + async/await + Timeouts)
- * Compartido entre CONTROL y MONITOREO sin alterar el envío de comandos.
+﻿/**
+ * Módulo Cliente REST Compartido (apiClient.js - v20)
+ * Adjunta Bearer Token automáticamente y consume rutas 4.1, 4.2 y 4.3.
  */
 
-import { CONFIG } from "./config.js?v=12";
+import { CONFIG } from "./config.js?v=20";
+import { sessionStore } from "./sessionStore.js?v=20";
 
 class ApiClient {
   constructor() {
     this.baseUrl = CONFIG.API_BASE_URL;
     this.defaultTimeout = CONFIG.HTTP_TIMEOUT_MS;
-    this.resolvedHistoryEndpoint = null;
+    this.onUnauthorizedCallback = null;
+  }
+
+  onUnauthorized(callback) {
+    this.onUnauthorizedCallback = callback;
   }
 
   async request(endpoint, options = {}, timeoutMs = this.defaultTimeout) {
@@ -17,9 +22,13 @@ class ApiClient {
     const timerId = setTimeout(() => controller.abort(), timeoutMs);
 
     const url = `${this.baseUrl}${endpoint}`;
+    const token = sessionStore.getToken();
+    const skipAuth = Boolean(options.skipAuth);
+
     const headers = {
       Accept: "application/json",
       ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...(!skipAuth && token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers || {})
     };
 
@@ -40,9 +49,19 @@ class ApiClient {
       }
 
       if (!response.ok) {
-        const errorMsg = (data && (data.detail || data.mensaje)) || `Error HTTP ${response.status}`;
+        let errorMsg = `Error HTTP ${response.status}`;
+        if (data) {
+          if (typeof data.detail === "string") errorMsg = data.detail;
+          else if (Array.isArray(data.detail) && data.detail[0]?.msg) errorMsg = data.detail[0].msg;
+          else if (data.mensaje) errorMsg = data.mensaje;
+        }
         const err = new Error(errorMsg);
         err.status = response.status;
+        err.data = data;
+
+        if (response.status === 401 && !skipAuth && endpoint !== CONFIG.ENDPOINTS.AUTH_LOGIN) {
+          if (this.onUnauthorizedCallback) this.onUnauthorizedCallback(errorMsg);
+        }
         throw err;
       }
 
@@ -56,29 +75,53 @@ class ApiClient {
     }
   }
 
-  /**
-   * Comprueba de forma separada la salud de FastAPI (GET /) y la disponibilidad de RDS (GET /estado/1)
-   */
-  async verificarInfraestructura(idVehiculo = CONFIG.VEHICULO_ID) {
+  // Diagnóstico auténtico separado: API AWS y Amazon RDS desde /salud
+  async verificarInfraestructura() {
     try {
-      await this.request(CONFIG.ENDPOINTS.SALUD_API, { method: "GET" }, 4500);
+      const res = await this.request(CONFIG.ENDPOINTS.SALUD_DETALLE, { method: "GET", skipAuth: true }, 5000);
+      const apiOk = res.data?.api === "DISPONIBLE" ? "AVAILABLE" : "UNAVAILABLE";
+      const rdsOk =
+        res.data?.rds === "DISPONIBLE"
+          ? "AVAILABLE"
+          : res.data?.rds === "NO_DISPONIBLE"
+            ? "UNAVAILABLE"
+            : "UNVERIFIED";
+      return { aws: apiOk, rds: rdsOk };
     } catch {
-      return { aws: "UNAVAILABLE", rds: "UNVERIFIED", estadoVehiculo: null };
-    }
-
-    try {
-      const resEstado = await this.request(CONFIG.ENDPOINTS.ESTADO_VEHICULO(idVehiculo), { method: "GET" }, 5000);
-      if (Array.isArray(resEstado.data) || (resEstado.data && typeof resEstado.data === "object")) {
-        return { aws: "AVAILABLE", rds: "AVAILABLE", estadoVehiculo: resEstado.data };
-      }
-      return { aws: "AVAILABLE", rds: "UNVERIFIED", estadoVehiculo: null };
-    } catch {
-      return { aws: "AVAILABLE", rds: "UNAVAILABLE", estadoVehiculo: null };
+      return { aws: "UNAVAILABLE", rds: "UNVERIFIED" };
     }
   }
 
-  // GET: Consultar último estado reportado del vehículo en RDS (Punto 4.2 y 7.2)
-  async obtenerUltimoEstadoVehiculo(idVehiculo = CONFIG.VEHICULO_ID) {
+  // ===== AUTENTICACIÓN =====
+  async login(correo, password) {
+    const res = await this.request(CONFIG.ENDPOINTS.AUTH_LOGIN, {
+      method: "POST",
+      skipAuth: true,
+      body: JSON.stringify({ correo, password })
+    });
+    return res.data;
+  }
+
+  async obtenerPerfilActual() {
+    const res = await this.request(CONFIG.ENDPOINTS.AUTH_ME, { method: "GET" });
+    return res.data;
+  }
+
+  async logout() {
+    try {
+      await this.request(CONFIG.ENDPOINTS.AUTH_LOGOUT, { method: "POST" });
+    } catch {
+      // Limpiar localmente aunque la sesión ya hubiera expirado
+    }
+  }
+
+  async obtenerMisVehiculos() {
+    const res = await this.request(CONFIG.ENDPOINTS.MIS_VEHICULOS, { method: "GET" });
+    return Array.isArray(res.data) ? res.data : [];
+  }
+
+  // ===== CONTROL Y MONITOREO (4.1 / 4.2) =====
+  async obtenerUltimoEstadoVehiculo(idVehiculo) {
     const res = await this.request(CONFIG.ENDPOINTS.ESTADO_VEHICULO(idVehiculo), { method: "GET" });
     if (Array.isArray(res.data)) {
       return res.data.length > 0 ? res.data[0] : null;
@@ -86,52 +129,20 @@ class ApiClient {
     return res.data || null;
   }
 
-  // GET: Consultar historial de movimientos individuales persistidos en RDS (Punto 5.2 y 7.2)
-  async obtenerHistorialVehiculo(idVehiculo = CONFIG.VEHICULO_ID) {
-    // Si ya descubrimos cuál de los prefijos de historial usa el router de FastAPI, usarlo directo
-    if (this.resolvedHistoryEndpoint) {
-      const res = await this.request(this.resolvedHistoryEndpoint(idVehiculo), { method: "GET" });
-      return this._normalizarArrayHistorial(res.data);
-    }
-
-    const candidates = CONFIG.ENDPOINTS.HISTORIAL_CANDIDATES(idVehiculo);
-    let lastError = null;
-
-    for (const path of candidates) {
-      try {
-        const res = await this.request(path, { method: "GET" });
-        // Guardar la ruta exitosa para no probar las demás en siguientes consultas
-        const prefix = path.replace(`/${idVehiculo}`, "");
-        this.resolvedHistoryEndpoint = (id) => `${prefix}/${id}`;
-        return this._normalizarArrayHistorial(res.data);
-      } catch (err) {
-        lastError = err;
-        if (err.status && err.status !== 404) {
-          throw err;
-        }
-      }
-    }
-
-    throw lastError || new Error("No se encontró la ruta de historial en la API.");
+  async obtenerHistorialVehiculo(idVehiculo) {
+    const res = await this.request(CONFIG.ENDPOINTS.HISTORIAL_VEHICULO(idVehiculo), { method: "GET" });
+    return Array.isArray(res.data) ? res.data : [];
   }
 
-  _normalizarArrayHistorial(data) {
-    if (Array.isArray(data)) return data;
-    if (data && Array.isArray(data.historial)) return data.historial;
-    if (data && Array.isArray(data.movimientos)) return data.movimientos;
-    if (data && Array.isArray(data.resultados)) return data.resultados;
-    return [];
-  }
-
-  async obtenerComandosVehiculo(idVehiculo = CONFIG.VEHICULO_ID) {
+  async obtenerComandosVehiculo(idVehiculo) {
     const res = await this.request(CONFIG.ENDPOINTS.COMANDOS_VEHICULO(idVehiculo), { method: "GET" });
     return Array.isArray(res.data) ? res.data : [];
   }
 
-  async enviarMovimiento(idComando, idVehiculo = CONFIG.VEHICULO_ID) {
+  async enviarMovimiento(codigoOIdComando, idVehiculo) {
     const payload = {
       id_vehiculo: Number(idVehiculo),
-      id_comando: Number(idComando),
+      id_comando: Number(codigoOIdComando),
       origen: CONFIG.ORIGEN_CLIENTE
     };
     return await this.request(CONFIG.ENDPOINTS.REGISTRAR_MOVIMIENTO, {
@@ -140,7 +151,8 @@ class ApiClient {
     });
   }
 
-  async obtenerDemosVehiculo(idVehiculo = CONFIG.VEHICULO_ID) {
+  // ===== DEMOS (EJECUCIÓN Y EDITOR VISUAL) =====
+  async obtenerDemosVehiculo(idVehiculo) {
     const res = await this.request(CONFIG.ENDPOINTS.DEMOS_VEHICULO(idVehiculo), { method: "GET" });
     return Array.isArray(res.data) ? res.data : [];
   }
@@ -150,25 +162,156 @@ class ApiClient {
     return Array.isArray(res.data) ? res.data : [];
   }
 
-  async iniciarDemo(idDemo, idVehiculo = CONFIG.VEHICULO_ID) {
-    const payload = {
-      id_vehiculo: Number(idVehiculo),
-      id_demo: Number(idDemo)
-    };
-    return await this.request(CONFIG.ENDPOINTS.INICIAR_DEMO, {
+  async guardarDemoCompleta(payload) {
+    const res = await this.request(CONFIG.ENDPOINTS.GUARDAR_DEMO_COMPLETA, {
       method: "POST",
       body: JSON.stringify(payload)
+    });
+    return res.data;
+  }
+
+  async eliminarDemo(idDemo) {
+    const res = await this.request(CONFIG.ENDPOINTS.ELIMINAR_DEMO(idDemo), { method: "POST" });
+    return res.data;
+  }
+
+  async iniciarDemo(idDemo, idVehiculo) {
+    return await this.request(CONFIG.ENDPOINTS.INICIAR_DEMO, {
+      method: "POST",
+      body: JSON.stringify({ id_vehiculo: Number(idVehiculo), id_demo: Number(idDemo) })
     });
   }
 
-  async cancelarDemo(idVehiculo = CONFIG.VEHICULO_ID) {
-    const payload = {
-      id_vehiculo: Number(idVehiculo)
-    };
+  async cancelarDemo(idVehiculo) {
     return await this.request(CONFIG.ENDPOINTS.CANCELAR_DEMO, {
+      method: "POST",
+      body: JSON.stringify({ id_vehiculo: Number(idVehiculo) })
+    });
+  }
+
+  // ===== ADMINISTRACIÓN (SOLO ADMIN) =====
+  async obtenerDashboardAdmin() {
+    const res = await this.request(CONFIG.ENDPOINTS.ADMIN_DASHBOARD, { method: "GET" });
+    return res.data;
+  }
+
+  async obtenerModelosAdmin() {
+    const res = await this.request(CONFIG.ENDPOINTS.ADMIN_MODELOS, { method: "GET" });
+    return Array.isArray(res.data) ? res.data : [];
+  }
+
+  async crearModeloAdmin(payload) {
+    const res = await this.request(CONFIG.ENDPOINTS.ADMIN_MODELOS, {
       method: "POST",
       body: JSON.stringify(payload)
     });
+    return res.data;
+  }
+
+  async actualizarModeloAdmin(idModelo, payload) {
+    const res = await this.request(CONFIG.ENDPOINTS.ADMIN_MODELO_ID(idModelo), {
+      method: "PUT",
+      body: JSON.stringify(payload)
+    });
+    return res.data;
+  }
+
+  async obtenerUnidadesAdmin(filtros = {}) {
+    const params = new URLSearchParams();
+    if (filtros.estado) params.set("estado", filtros.estado);
+    if (filtros.buscar) params.set("buscar", filtros.buscar);
+    const qs = params.toString() ? `?${params.toString()}` : "";
+    const res = await this.request(`${CONFIG.ENDPOINTS.ADMIN_UNIDADES}${qs}`, { method: "GET" });
+    return Array.isArray(res.data) ? res.data : [];
+  }
+
+  async crearUnidadAdmin(payload) {
+    const res = await this.request(CONFIG.ENDPOINTS.ADMIN_UNIDADES, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+    return res.data;
+  }
+
+  async actualizarUnidadAdmin(idVehiculo, payload) {
+    const res = await this.request(CONFIG.ENDPOINTS.ADMIN_UNIDAD_ID(idVehiculo), {
+      method: "PUT",
+      body: JSON.stringify(payload)
+    });
+    return res.data;
+  }
+
+  async desactivarUnidadAdmin(idVehiculo) {
+    const res = await this.request(CONFIG.ENDPOINTS.ADMIN_UNIDAD_DESACTIVAR(idVehiculo), {
+      method: "PATCH"
+    });
+    return res.data;
+  }
+
+  async obtenerClientesAdmin() {
+    const res = await this.request(CONFIG.ENDPOINTS.ADMIN_CLIENTES, { method: "GET" });
+    return Array.isArray(res.data) ? res.data : [];
+  }
+
+  async crearClienteAdmin(payload) {
+    const res = await this.request(CONFIG.ENDPOINTS.ADMIN_CLIENTES, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+    return res.data;
+  }
+
+  async cambiarEstadoClienteAdmin(idUsuario, activo) {
+    const res = await this.request(CONFIG.ENDPOINTS.ADMIN_CLIENTE_ESTADO(idUsuario), {
+      method: "PATCH",
+      body: JSON.stringify({ activo })
+    });
+    return res.data;
+  }
+
+  async asignarUnidadAdmin(payload) {
+    const res = await this.request(CONFIG.ENDPOINTS.ADMIN_ASIGNACIONES, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+    return res.data;
+  }
+
+  async liberarUnidadAdmin(idVehiculo, nuevoEstado = "DISPONIBLE") {
+    const res = await this.request(CONFIG.ENDPOINTS.ADMIN_LIBERAR_UNIDAD(idVehiculo), {
+      method: "POST",
+      body: JSON.stringify({ nuevo_estado: nuevoEstado })
+    });
+    return res.data;
+  }
+
+  async obtenerAuditoriaAdmin(limit = 40) {
+    const res = await this.request(`${CONFIG.ENDPOINTS.ADMIN_AUDITORIA}?limit=${limit}`, { method: "GET" });
+    return Array.isArray(res.data) ? res.data : [];
+  }
+
+  // ===== INVITADO (CATÁLOGO PÚBLICO Y RESERVA TEMPORAL) =====
+  async obtenerCatalogoInvitado() {
+    const res = await this.request(CONFIG.ENDPOINTS.INVITADO_CATALOGO, { method: "GET", skipAuth: true });
+    return res.data;
+  }
+
+  async iniciarSesionInvitado(idVehiculo, nombreInvitado = "Invitado", duracionSegundos = 120) {
+    const res = await this.request(CONFIG.ENDPOINTS.INVITADO_SESIONES, {
+      method: "POST",
+      skipAuth: true,
+      body: JSON.stringify({
+        id_vehiculo: Number(idVehiculo),
+        nombre_invitado: nombreInvitado,
+        duracion_segundos: Number(duracionSegundos)
+      })
+    });
+    return res.data;
+  }
+
+  async finalizarSesionInvitado() {
+    const res = await this.request(CONFIG.ENDPOINTS.INVITADO_FINALIZAR, { method: "POST" });
+    return res.data;
   }
 }
 

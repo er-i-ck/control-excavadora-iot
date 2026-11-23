@@ -1,36 +1,36 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es" data-bs-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="color-scheme" content="dark" />
-  <meta name="description" content="Panel de Control y Monitoreo IoT para Excavadora RC mediante AWS FastAPI, RDS y WebSocket Seguro (WSS)" />
+  <meta name="description" content="Plataforma IoT de Control, Monitoreo y Administración de Vehículos RC mediante AWS FastAPI, Amazon RDS y WebSocket Seguro (WSS)" />
   <meta name="theme-color" content="#0f172a" />
-  <title>Control y Monitoreo Excavadora IoT · AWS & WSS</title>
+  <title>Control, Monitoreo y Administración IoT · AWS & WSS</title>
 
   <link rel="icon" type="image/svg+xml" href="./assets/img/favicon.svg" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
 
-  <!-- ?v=9 obliga al navegador del celular a cargar el CSS completo -->
   <link rel="stylesheet" href="./assets/css/styles.css?v=9" />
+  <link rel="stylesheet" href="./assets/css/admin.css?v=20" />
 </head>
 <body class="app-viewport">
 
-  <!-- ENCABEZADO COMPARTIDO: TÍTULO + PESTAÑAS (CONTROL / MONITOREO) + 3 INDICADORES -->
+  <!-- ENCABEZADO COMPARTIDO: TÍTULO + 3 PESTAÑAS + SESIÓN/UNIDAD + 3 INDICADORES -->
   <header class="app-header border-bottom border-secondary-subtle px-2 py-1">
     <div class="header-bar max-w-app mx-auto">
 
       <div class="header-brand">
         <img src="./assets/img/favicon.svg" alt="Icono Excavadora IoT" class="brand-icon" width="22" height="22" />
         <div class="lh-1 text-truncate me-auto">
-          <h1 class="title-main mb-0 fw-bold text-warning text-truncate" id="vehicle-title">Excavadora IoT RC · Unidad 01</h1>
-          <span class="subtitle-main text-secondary text-truncate d-block" id="vehicle-subtitle">ID #1 · Control y Monitoreo WSS/REST</span>
+          <h1 class="title-main mb-0 fw-bold text-warning text-truncate" id="vehicle-title">Plataforma Vehículos IoT</h1>
+          <span class="subtitle-main text-secondary text-truncate d-block" id="vehicle-subtitle">Inicia sesión o prueba una unidad de exhibición</span>
         </div>
 
-        <!-- Botones de navegación entre CONTROL y MONITOREO -->
-        <nav class="nav-view-switcher" role="tablist" aria-label="Cambiar entre Control y Monitoreo">
-          <button type="button" id="tab-btn-control" class="btn-nav-tab active" role="tab" aria-selected="true" aria-controls="view-control">
+        <!-- Navegación integrada: CONTROL | MONITOREO | ADMINISTRACIÓN -->
+        <nav class="nav-view-switcher" role="tablist" aria-label="Navegación principal entre Control, Monitoreo y Administración">
+          <button type="button" id="tab-btn-control" class="btn-nav-tab" role="tab" aria-selected="false" aria-controls="view-control">
             <i class="bi bi-controller" aria-hidden="true"></i>
             <span>CONTROL</span>
           </button>
@@ -38,27 +38,53 @@
             <i class="bi bi-activity" aria-hidden="true"></i>
             <span>MONITOREO</span>
           </button>
+          <button type="button" id="tab-btn-admin" class="btn-nav-tab active" role="tab" aria-selected="true" aria-controls="view-admin">
+            <i class="bi bi-shield-lock" aria-hidden="true"></i>
+            <span id="tab-label-admin">ADMINISTRACIÓN</span>
+          </button>
         </nav>
 
-        <button type="button" id="btn-refresh-health" class="btn btn-xs btn-outline-light flex-shrink-0" aria-label="Comprobar estado de servicios AWS y RDS">
+        <button type="button" id="btn-refresh-health" class="btn btn-xs btn-outline-light flex-shrink-0" aria-label="Comprobar estado de servicios AWS y RDS" title="Comprobar conectividad AWS y RDS">
           <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
         </button>
       </div>
 
-      <!-- 3 Indicadores separados en una sola fila horizontal -->
+      <!-- Barra compacta de sesión, rol, selector de unidad activa y temporizador de invitado -->
+      <div class="session-strip" role="region" aria-label="Información de sesión y unidad activa">
+        <div class="d-flex align-items-center gap-1 flex-wrap">
+          <span id="header-role-badge" class="badge bg-secondary badge-xs">SIN SESIÓN</span>
+          <span id="header-user-name" class="small text-light fw-semibold text-truncate">Modo acceso público</span>
+          <span id="guest-timer-badge" class="badge bg-warning text-dark badge-xs d-none" aria-live="polite">
+            <i class="bi bi-hourglass-split me-1" aria-hidden="true"></i><span id="guest-timer-text">00:00</span>
+          </span>
+        </div>
+
+        <div class="d-flex align-items-center gap-1 ms-auto">
+          <label for="header-vehicle-select" class="visually-hidden">Seleccionar unidad activa</label>
+          <select id="header-vehicle-select" class="form-select form-select-sm bg-dark text-light border-secondary session-vehicle-select d-none" aria-label="Selector de unidad activa"></select>
+          <button type="button" id="btn-header-logout" class="btn btn-xs btn-outline-danger d-none">
+            <i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i>Salir
+          </button>
+          <button type="button" id="btn-header-login" class="btn btn-xs btn-warning text-dark fw-bold">
+            <i class="bi bi-person-lock me-1" aria-hidden="true"></i>Iniciar sesión
+          </button>
+        </div>
+      </div>
+
+      <!-- 3 Indicadores independientes: WebSocket WSS | API AWS | Amazon RDS -->
       <div class="status-grid" role="region" aria-label="Estado de servicios de infraestructura">
-        <div id="badge-ws" class="status-pill status-checking" role="status" aria-live="polite">
-          <i id="icon-ws" class="bi bi-arrow-repeat spin-icon" aria-hidden="true"></i>
+        <div id="badge-ws" class="status-pill status-offline" role="status" aria-live="polite">
+          <i id="icon-ws" class="bi bi-wifi-off" aria-hidden="true"></i>
           <div class="status-text">
             <span class="status-label">WebSocket WSS</span>
-            <strong id="text-ws">Conectando...</strong>
+            <strong id="text-ws">Desconectado</strong>
           </div>
         </div>
 
         <div id="badge-aws" class="status-pill status-checking" role="status" aria-live="polite">
           <i id="icon-aws" class="bi bi-arrow-repeat spin-icon" aria-hidden="true"></i>
           <div class="status-text">
-            <span class="status-label">Servidor AWS · 21 APIs</span>
+            <span class="status-label">Servidor AWS · API</span>
             <strong id="text-aws">Comprobando...</strong>
           </div>
         </div>
@@ -75,15 +101,14 @@
     </div>
   </header>
 
-  <!-- CONTENIDO PRINCIPAL FIJO (SIN SCROLL EN PANTALLA) -->
+  <!-- CONTENIDO PRINCIPAL -->
   <main class="app-main px-2 py-1">
 
     <!-- ======================================================================
-         VISTA 1: CONTROL (Con el diseño exacto de dos columnas lado a lado)
+         VISTA 1: CONTROL (Práctica 4.1 conservada + adaptada por modelo/rol)
          ====================================================================== -->
-    <div id="view-control" class="control-view-layout max-w-app mx-auto h-100" role="tabpanel" aria-labelledby="tab-btn-control">
+    <div id="view-control" class="control-view-layout max-w-app mx-auto h-100 d-none" role="tabpanel" aria-labelledby="tab-btn-control" aria-hidden="true">
 
-      <!-- Barra de trazabilidad de 3 pasos arriba -->
       <section class="telemetry-bar px-2 py-1 rounded-2 flex-shrink-0" aria-label="Evidencia de comunicación de comandos">
         <div class="telemetry-grid text-center">
           <div class="text-truncate">
@@ -102,7 +127,6 @@
         <div id="alert-box" class="alert alert-danger mt-1 mb-0 py-0 px-2 small d-none text-truncate" role="alert" aria-live="assertive"></div>
       </section>
 
-      <!-- Zona de Mandos: Izquierda (Dirección + Joystick + Detener) | Derecha (Brazo y Auxiliares) | Abajo/Derecha (DEMO) -->
       <div class="cockpit-columns flex-grow-1">
 
         <!-- TARJETA IZQUIERDA: DIRECCIÓN Y JOYSTICK -->
@@ -134,7 +158,7 @@
           </button>
         </section>
 
-        <!-- TARJETA DERECHA: BRAZO Y AUXILIARES (2 columnas x 4 filas) -->
+        <!-- TARJETA DERECHA: BRAZO Y AUXILIARES -->
         <section class="control-card card-actions p-2 rounded-3" aria-labelledby="heading-actions">
           <h2 id="heading-actions" class="card-heading mb-1 text-uppercase fw-bold text-light flex-shrink-0">
             <i class="bi bi-gear-wide-connected me-1 text-warning" aria-hidden="true"></i>Brazo y Auxiliares
@@ -190,7 +214,7 @@
 
           <div class="demo-controls-row mb-1 flex-shrink-0">
             <select id="select-demo" class="form-select form-select-sm bg-dark text-light border-secondary demo-select" aria-label="Seleccionar secuencia DEMO">
-              <option value="">Cargando DEMOs...</option>
+              <option value="">Inicia sesión para cargar DEMOs...</option>
             </select>
             <div class="demo-btn-group">
               <button type="button" id="btn-start-demo" class="btn btn-warning btn-demo fw-bold">
@@ -211,27 +235,26 @@
     </div>
 
     <!-- ======================================================================
-         VISTA 2: MONITOREO EN TIEMPO REAL (Fija en 100dvh sin desplazar página)
+         VISTA 2: MONITOREO EN TIEMPO REAL (Práctica 4.2 conservada)
          ====================================================================== -->
     <div id="view-monitor" class="monitor-grid max-w-app mx-auto h-100 d-none" role="tabpanel" aria-labelledby="tab-btn-monitor" aria-hidden="true">
 
-      <!-- TARJETA DESTACADA DEL ÚLTIMO MOVIMIENTO REPORTADO -->
       <section class="control-card monitor-card-last p-2 rounded-3" aria-labelledby="heading-last-move">
         <div class="d-flex justify-content-between align-items-center mb-1 flex-shrink-0">
           <h2 id="heading-last-move" class="card-heading mb-0 text-uppercase fw-bold text-warning">
             <i class="bi bi-radar me-1" aria-hidden="true"></i>Último Movimiento Reportado
           </h2>
-          <span id="mon-last-sync-badge" class="badge bg-secondary badge-xs">Sincronizando...</span>
+          <span id="mon-last-sync-badge" class="badge bg-secondary badge-xs">En espera</span>
         </div>
 
         <div class="last-move-hero p-2 rounded-2 my-auto">
           <div class="d-flex align-items-center justify-content-between gap-1 mb-1">
-            <span id="mon-last-vehicle" class="badge bg-dark border border-secondary text-info badge-xs">Vehículo #1</span>
+            <span id="mon-last-vehicle" class="badge bg-dark border border-secondary text-info badge-xs">Vehículo —</span>
             <span id="mon-last-code" class="badge bg-dark border border-secondary text-warning badge-xs">Código: —</span>
           </div>
 
           <div id="mon-last-movement" class="last-move-title fw-bold text-truncate" aria-live="polite">
-            Cargando estado...
+            Inicia sesión para monitorear
           </div>
 
           <div class="last-move-meta mt-1 pt-1 border-top border-secondary-subtle">
@@ -245,7 +268,7 @@
             </div>
             <div class="meta-item meta-full text-truncate">
               <span class="meta-label"><i class="bi bi-cpu me-1 text-secondary"></i>Origen:</span>
-              <span id="mon-last-origin" class="text-secondary text-truncate">Consulta inicial REST</span>
+              <span id="mon-last-origin" class="text-secondary text-truncate">Consulta REST/WSS</span>
             </div>
           </div>
         </div>
@@ -260,13 +283,12 @@
         </div>
       </section>
 
-      <!-- TABLA DINÁMICA DE LOS 10 ÚLTIMOS MOVIMIENTOS PERSISTIDOS -->
       <section class="control-card monitor-card-table p-2 rounded-3" aria-labelledby="heading-history-table">
         <div class="d-flex justify-content-between align-items-center mb-1 flex-shrink-0">
           <h2 id="heading-history-table" class="card-heading mb-0 text-uppercase fw-bold text-light">
             <i class="bi bi-table me-1 text-warning" aria-hidden="true"></i>Últimos 10 Movimientos Persistidos (RDS)
           </h2>
-          <span id="mon-history-badge" class="badge bg-secondary badge-xs">Cargando...</span>
+          <span id="mon-history-badge" class="badge bg-secondary badge-xs">En espera</span>
         </div>
 
         <div id="mon-alert-box" class="alert alert-danger py-0 px-2 mb-1 small d-none flex-shrink-0" role="alert"></div>
@@ -284,11 +306,447 @@
             </thead>
             <tbody id="mon-history-tbody">
               <tr>
-                <td colspan="5" class="text-center text-secondary py-3">Cargando últimos movimientos desde Amazon RDS...</td>
+                <td colspan="5" class="text-center text-secondary py-3">Inicia sesión para consultar los últimos movimientos en Amazon RDS.</td>
               </tr>
             </tbody>
           </table>
         </div>
+      </section>
+
+    </div>
+
+    <!-- ======================================================================
+         VISTA 3: ADMINISTRACIÓN, MIS VEHÍCULOS, EDITOR DE DEMOS Y CATÁLOGO INVITADO
+         ====================================================================== -->
+    <div id="view-admin" class="admin-view-scroll max-w-app mx-auto h-100" role="tabpanel" aria-labelledby="tab-btn-admin">
+
+      <div id="admin-global-feedback" class="alert py-2 px-3 mb-2 small d-none" role="alert" aria-live="polite"></div>
+
+      <!-- SECCIÓN PÚBLICA (SIN SESIÓN): LOGIN + CATÁLOGO DE EXHIBICIÓN PARA INVITADOS -->
+      <section id="panel-publico" class="row g-3 pb-3">
+        <div class="col-12 col-lg-5">
+          <div class="admin-card p-3 rounded-3 h-100">
+            <h2 class="h6 text-warning fw-bold text-uppercase mb-2">
+              <i class="bi bi-shield-lock-fill me-1" aria-hidden="true"></i>Acceso de Administrador y Compradores
+            </h2>
+            <p class="small text-secondary mb-3">
+              Inicia sesión con tu cuenta registrada en Amazon RDS. Los permisos se validan en el servidor AWS (RBAC + propiedad de unidad).
+            </p>
+            <form id="form-login" novalidate>
+              <div class="mb-2">
+                <label for="login-correo" class="form-label small mb-1">Correo electrónico</label>
+                <input type="email" id="login-correo" class="form-control form-control-sm bg-dark text-light border-secondary" placeholder="usuario@excavadora.iot" autocomplete="username" required />
+              </div>
+              <div class="mb-3">
+                <label for="login-password" class="form-label small mb-1">Contraseña</label>
+                <input type="password" id="login-password" class="form-control form-control-sm bg-dark text-light border-secondary" placeholder="••••••••" autocomplete="current-password" required />
+              </div>
+              <button type="submit" id="btn-submit-login" class="btn btn-warning btn-sm w-100 fw-bold text-dark">
+                <i class="bi bi-box-arrow-in-right me-1" aria-hidden="true"></i>Entrar a la plataforma
+              </button>
+            </form>
+            <div id="login-error-box" class="alert alert-danger mt-2 mb-0 py-1 px-2 small d-none" role="alert"></div>
+          </div>
+        </div>
+
+        <div class="col-12 col-lg-7">
+          <div class="admin-card p-3 rounded-3 h-100">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+              <h2 class="h6 text-info fw-bold text-uppercase mb-0">
+                <i class="bi bi-stars me-1" aria-hidden="true"></i>Prueba nuestros vehículos IoT (Invitado)
+              </h2>
+              <button type="button" id="btn-refresh-catalogo" class="btn btn-xs btn-outline-info">
+                <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Actualizar catálogo
+              </button>
+            </div>
+            <p class="small text-secondary mb-2">
+              Consulta nuestros modelos comerciales y reserva una unidad de <strong>EXHIBICIÓN</strong> en sesión temporal exclusiva (sin exponer unidades de compradores).
+            </p>
+
+            <div class="row g-2 mb-3">
+              <div class="col-12 col-sm-7">
+                <label for="invitado-nombre" class="form-label small mb-1">Tu nombre (opcional)</label>
+                <input type="text" id="invitado-nombre" class="form-control form-control-sm bg-dark text-light border-secondary" maxlength="60" placeholder="Invitado de prueba" />
+              </div>
+              <div class="col-12 col-sm-5">
+                <label for="invitado-duracion" class="form-label small mb-1">Duración de prueba</label>
+                <select id="invitado-duracion" class="form-select form-select-sm bg-dark text-light border-secondary">
+                  <option value="60">60 segundos</option>
+                  <option value="120" selected>120 segundos (2 min)</option>
+                  <option value="180">180 segundos (Máx.)</option>
+                </select>
+              </div>
+            </div>
+
+            <div id="catalogo-exhibicion-container" class="row g-2 mb-3">
+              <div class="col-12 text-secondary small">Cargando unidades de exhibición desde AWS...</div>
+            </div>
+
+            <h3 class="small text-uppercase text-warning fw-bold mb-2">Modelos comerciales disponibles</h3>
+            <div id="catalogo-modelos-container" class="row g-2">
+              <div class="col-12 text-secondary small">Cargando modelos...</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECCIÓN INVITADO CON SESIÓN ACTIVA -->
+      <section id="panel-invitado-activo" class="d-none pb-3">
+        <div class="admin-card p-3 rounded-3">
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+            <h2 class="h6 text-info fw-bold text-uppercase mb-0">
+              <i class="bi bi-stopwatch-fill me-1" aria-hidden="true"></i>Sesión Temporal de Invitado Activa
+            </h2>
+            <span id="invitado-panel-timer" class="badge bg-warning text-dark fs-6 font-monospace">02:00</span>
+          </div>
+          <p id="invitado-panel-detalle" class="small text-light mb-2"></p>
+          <p class="small text-secondary mb-3">
+            Comandos habilitados por seguridad física: <strong>Avanzar, Retroceder, Girar Izquierda, Girar Derecha y DETENER</strong>. Al expirar el tiempo o finalizar, se envía paro seguro y se libera la reserva.
+          </p>
+          <div class="d-flex flex-wrap gap-2">
+            <button type="button" id="btn-invitado-ir-control" class="btn btn-warning btn-sm fw-bold text-dark">
+              <i class="bi bi-controller me-1" aria-hidden="true"></i>Ir a Controlar Unidad
+            </button>
+            <button type="button" id="btn-invitado-ir-monitor" class="btn btn-outline-info btn-sm">
+              <i class="bi bi-activity me-1" aria-hidden="true"></i>Ver Monitoreo en Vivo
+            </button>
+            <button type="button" id="btn-invitado-finalizar" class="btn btn-outline-danger btn-sm ms-auto">
+              <i class="bi bi-stop-circle me-1" aria-hidden="true"></i>Finalizar Prueba y Liberar Unidad
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- WORKSPACE AUTENTICADO (ADMIN Y USUARIO) -->
+      <section id="panel-workspace" class="d-none pb-3">
+
+        <!-- Sub-menú adaptable por rol -->
+        <div class="admin-subnav d-flex flex-wrap gap-1 mb-3" role="tablist" aria-label="Secciones de Administración">
+          <button type="button" class="btn btn-sm btn-outline-warning admin-subtab role-admin-only" data-subtab="dashboard">
+            <i class="bi bi-speedometer2 me-1" aria-hidden="true"></i>Dashboard
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-warning admin-subtab role-admin-only" data-subtab="modelos">
+            <i class="bi bi-boxes me-1" aria-hidden="true"></i>Modelos
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-warning admin-subtab role-admin-only" data-subtab="unidades">
+            <i class="bi bi-truck-front me-1" aria-hidden="true"></i>Unidades
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-warning admin-subtab role-admin-only" data-subtab="clientes">
+            <i class="bi bi-people me-1" aria-hidden="true"></i>Clientes y Asignaciones
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-info admin-subtab" data-subtab="mis-vehiculos">
+            <i class="bi bi-car-front-fill me-1" aria-hidden="true"></i>Mis Vehículos
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-info admin-subtab" data-subtab="editor-demos">
+            <i class="bi bi-sliders me-1" aria-hidden="true"></i>Editor de DEMOs
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-secondary admin-subtab role-admin-only" data-subtab="auditoria">
+            <i class="bi bi-journal-check me-1" aria-hidden="true"></i>Auditoría
+          </button>
+        </div>
+
+        <!-- SUBVISTA A: DASHBOARD ADMIN -->
+        <div id="subtab-dashboard" class="admin-subpane d-none">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h2 class="h6 text-warning fw-bold text-uppercase mb-0">Dashboard Comercial (Métricas Reales RDS)</h2>
+            <button type="button" id="btn-reload-dashboard" class="btn btn-xs btn-outline-light">
+              <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Actualizar
+            </button>
+          </div>
+          <div id="admin-metrics-grid" class="row g-2 mb-3"></div>
+          <div class="admin-card p-3 rounded-3">
+            <h3 class="small text-uppercase text-info fw-bold mb-2">Últimos eventos de auditoría</h3>
+            <div class="table-responsive">
+              <table class="table table-dark table-sm table-striped mb-0 align-middle small">
+                <thead>
+                  <tr><th>ID</th><th>Acción</th><th>Recurso</th><th>Actor</th><th>Resultado</th><th>Fecha</th></tr>
+                </thead>
+                <tbody id="dashboard-audit-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUBVISTA B: CRUD MODELOS COMERCIALES -->
+        <div id="subtab-modelos" class="admin-subpane d-none">
+          <div class="row g-3">
+            <div class="col-12 col-lg-5">
+              <div class="admin-card p-3 rounded-3">
+                <h2 class="h6 text-warning fw-bold text-uppercase mb-2" id="titulo-form-modelo">Registrar Modelo Comercial</h2>
+                <form id="form-modelo">
+                  <input type="hidden" id="modelo-edit-id" value="" />
+                  <div class="mb-2">
+                    <label for="modelo-codigo" class="form-label small mb-1">Código de modelo (único)</label>
+                    <input type="text" id="modelo-codigo" class="form-control form-control-sm bg-dark text-light border-secondary" placeholder="EXC-PRO-02" required />
+                  </div>
+                  <div class="mb-2">
+                    <label for="modelo-nombre" class="form-label small mb-1">Nombre comercial</label>
+                    <input type="text" id="modelo-nombre" class="form-control form-control-sm bg-dark text-light border-secondary" placeholder="Excavadora Pro IoT" required />
+                  </div>
+                  <div class="mb-2">
+                    <label for="modelo-desc" class="form-label small mb-1">Descripción</label>
+                    <textarea id="modelo-desc" rows="2" class="form-control form-control-sm bg-dark text-light border-secondary" placeholder="Capacidades físicas y alcance"></textarea>
+                  </div>
+                  <div class="mb-2">
+                    <span class="form-label small d-block mb-1">Comandos soportados por el modelo (PARAR siempre obligatorio)</span>
+                    <div id="modelo-comandos-checks" class="d-flex flex-wrap gap-2 small"></div>
+                  </div>
+                  <div class="d-flex gap-2 mt-3">
+                    <button type="submit" class="btn btn-warning btn-sm fw-bold text-dark">Guardar Modelo</button>
+                    <button type="button" id="btn-cancelar-modelo" class="btn btn-outline-secondary btn-sm">Limpiar</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+            <div class="col-12 col-lg-7">
+              <div class="admin-card p-3 rounded-3">
+                <h2 class="h6 text-info fw-bold text-uppercase mb-2">Catálogo de Modelos</h2>
+                <div class="table-responsive">
+                  <table class="table table-dark table-sm table-striped mb-0 align-middle small">
+                    <thead>
+                      <tr><th>ID</th><th>Código</th><th>Nombre</th><th>Capacidades</th><th>Acción</th></tr>
+                    </thead>
+                    <tbody id="admin-modelos-tbody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUBVISTA C: CRUD UNIDADES FÍSICAS -->
+        <div id="subtab-unidades" class="admin-subpane d-none">
+          <div class="row g-3">
+            <div class="col-12 col-lg-4">
+              <div class="admin-card p-3 rounded-3">
+                <h2 class="h6 text-warning fw-bold text-uppercase mb-2" id="titulo-form-unidad">Registrar Unidad Física</h2>
+                <form id="form-unidad">
+                  <input type="hidden" id="unidad-edit-id" value="" />
+                  <div class="mb-2">
+                    <label for="unidad-serie" class="form-label small mb-1">Código de serie único</label>
+                    <input type="text" id="unidad-serie" class="form-control form-control-sm bg-dark text-light border-secondary" placeholder="UNIT-005" required />
+                  </div>
+                  <div class="mb-2">
+                    <label for="unidad-nombre" class="form-label small mb-1">Nombre de la unidad</label>
+                    <input type="text" id="unidad-nombre" class="form-control form-control-sm bg-dark text-light border-secondary" placeholder="Excavadora Unidad 05" required />
+                  </div>
+                  <div class="mb-2">
+                    <label for="unidad-modelo" class="form-label small mb-1">Modelo comercial</label>
+                    <select id="unidad-modelo" class="form-select form-select-sm bg-dark text-light border-secondary" required></select>
+                  </div>
+                  <div class="mb-2">
+                    <label for="unidad-estado" class="form-label small mb-1">Estado comercial</label>
+                    <select id="unidad-estado" class="form-select form-select-sm bg-dark text-light border-secondary">
+                      <option value="DISPONIBLE">DISPONIBLE</option>
+                      <option value="EXHIBICION">EXHIBICION (Invitados)</option>
+                      <option value="VENDIDO">VENDIDO</option>
+                      <option value="INACTIVO">INACTIVO</option>
+                    </select>
+                  </div>
+                  <div class="mb-2">
+                    <label for="unidad-mcu" class="form-label small mb-1">Microcontrolador</label>
+                    <input type="text" id="unidad-mcu" class="form-control form-control-sm bg-dark text-light border-secondary" value="ESP8266" />
+                  </div>
+                  <div class="d-flex gap-2 mt-3">
+                    <button type="submit" class="btn btn-warning btn-sm fw-bold text-dark">Guardar Unidad</button>
+                    <button type="button" id="btn-cancelar-unidad" class="btn btn-outline-secondary btn-sm">Limpiar</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            <div class="col-12 col-lg-8">
+              <div class="admin-card p-3 rounded-3">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                  <h2 class="h6 text-info fw-bold text-uppercase mb-0">Inventario de Unidades Físicas</h2>
+                  <div class="d-flex gap-1">
+                    <input type="search" id="filtro-unidades-buscar" class="form-control form-control-sm bg-dark text-light border-secondary" placeholder="Buscar serie/nombre..." />
+                    <select id="filtro-unidades-estado" class="form-select form-select-sm bg-dark text-light border-secondary">
+                      <option value="">Todos los estados</option>
+                      <option value="DISPONIBLE">DISPONIBLE</option>
+                      <option value="VENDIDO">VENDIDO</option>
+                      <option value="EXHIBICION">EXHIBICION</option>
+                      <option value="INACTIVO">INACTIVO</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="table-responsive">
+                  <table class="table table-dark table-sm table-striped mb-0 align-middle small">
+                    <thead>
+                      <tr><th>ID / Serie</th><th>Unidad / Modelo</th><th>Estado</th><th>Propietario</th><th>Acciones</th></tr>
+                    </thead>
+                    <tbody id="admin-unidades-tbody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUBVISTA D: CLIENTES Y ASIGNACIONES -->
+        <div id="subtab-clientes" class="admin-subpane d-none">
+          <div class="row g-3">
+            <div class="col-12 col-lg-5">
+              <div class="admin-card p-3 rounded-3 mb-3">
+                <h2 class="h6 text-warning fw-bold text-uppercase mb-2">Alta de Cliente / Usuario</h2>
+                <form id="form-cliente">
+                  <div class="mb-2">
+                    <label for="cliente-nombre" class="form-label small mb-1">Nombre completo</label>
+                    <input type="text" id="cliente-nombre" class="form-control form-control-sm bg-dark text-light border-secondary" required />
+                  </div>
+                  <div class="mb-2">
+                    <label for="cliente-correo" class="form-label small mb-1">Correo electrónico</label>
+                    <input type="email" id="cliente-correo" class="form-control form-control-sm bg-dark text-light border-secondary" required />
+                  </div>
+                  <div class="row g-2 mb-2">
+                    <div class="col-7">
+                      <label for="cliente-password" class="form-label small mb-1">Contraseña inicial</label>
+                      <input type="password" id="cliente-password" class="form-control form-control-sm bg-dark text-light border-secondary" minlength="6" required />
+                    </div>
+                    <div class="col-5">
+                      <label for="cliente-rol" class="form-label small mb-1">Rol</label>
+                      <select id="cliente-rol" class="form-select form-select-sm bg-dark text-light border-secondary">
+                        <option value="USUARIO" selected>USUARIO</option>
+                        <option value="ADMIN">ADMIN</option>
+                      </select>
+                    </div>
+                  </div>
+                  <button type="submit" class="btn btn-warning btn-sm fw-bold text-dark w-100">Registrar Cliente</button>
+                </form>
+              </div>
+
+              <div class="admin-card p-3 rounded-3">
+                <h2 class="h6 text-info fw-bold text-uppercase mb-2">Asignar / Reasignar Unidad</h2>
+                <p class="small text-secondary mb-2">Al reasignar una unidad se conserva su historial en RDS y se revoca el permiso del dueño anterior de inmediato.</p>
+                <form id="form-asignacion">
+                  <div class="mb-2">
+                    <label for="asig-unidad" class="form-label small mb-1">Unidad física</label>
+                    <select id="asig-unidad" class="form-select form-select-sm bg-dark text-light border-secondary" required></select>
+                  </div>
+                  <div class="mb-2">
+                    <label for="asig-cliente" class="form-label small mb-1">Nuevo comprador / propietario</label>
+                    <select id="asig-cliente" class="form-select form-select-sm bg-dark text-light border-secondary" required></select>
+                  </div>
+                  <button type="submit" class="btn btn-info btn-sm fw-bold text-dark w-100">Asignar Unidad</button>
+                </form>
+              </div>
+            </div>
+
+            <div class="col-12 col-lg-7">
+              <div class="admin-card p-3 rounded-3">
+                <h2 class="h6 text-info fw-bold text-uppercase mb-2">Clientes y Cuentas Registradas</h2>
+                <div class="table-responsive">
+                  <table class="table table-dark table-sm table-striped mb-0 align-middle small">
+                    <thead>
+                      <tr><th>ID</th><th>Nombre / Correo</th><th>Rol</th><th>Unidades</th><th>Estado</th><th>Acción</th></tr>
+                    </thead>
+                    <tbody id="admin-clientes-tbody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUBVISTA E: MIS VEHÍCULOS (USUARIO Y UNIDADES OPERABLES DE ADMIN) -->
+        <div id="subtab-mis-vehiculos" class="admin-subpane d-none">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h2 class="h6 text-info fw-bold text-uppercase mb-0">Mis Vehículos Autorizados</h2>
+            <button type="button" id="btn-reload-mis-vehiculos" class="btn btn-xs btn-outline-info">
+              <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Recargar
+            </button>
+          </div>
+          <div id="mis-vehiculos-grid" class="row g-3"></div>
+        </div>
+
+        <!-- SUBVISTA F: EDITOR VISUAL DE DEMOS (FÁBRICA Y PRIVADAS) -->
+        <div id="subtab-editor-demos" class="admin-subpane d-none">
+          <div class="row g-3">
+            <div class="col-12 col-lg-5">
+              <div class="admin-card p-3 rounded-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <h2 class="h6 text-info fw-bold text-uppercase mb-0">DEMOs de la Unidad</h2>
+                  <button type="button" id="btn-nueva-demo" class="btn btn-xs btn-warning text-dark fw-bold">
+                    <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Nueva DEMO
+                  </button>
+                </div>
+                <div class="mb-2">
+                  <label for="editor-demo-vehiculo" class="form-label small mb-1">Unidad seleccionada</label>
+                  <select id="editor-demo-vehiculo" class="form-select form-select-sm bg-dark text-light border-secondary"></select>
+                </div>
+                <div id="editor-demos-lista" class="list-group list-group-flush small"></div>
+              </div>
+            </div>
+
+            <div class="col-12 col-lg-7">
+              <div class="admin-card p-3 rounded-3">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                  <h2 class="h6 text-warning fw-bold text-uppercase mb-0" id="titulo-editor-demo">Editor Visual de Secuencia DEMO</h2>
+                  <span id="editor-duracion-total" class="badge bg-dark border border-warning text-warning">Total: 0 ms / 30,000 ms</span>
+                </div>
+
+                <form id="form-editor-demo">
+                  <input type="hidden" id="editor-demo-id" value="" />
+                  <div class="row g-2 mb-2">
+                    <div class="col-12 col-sm-6">
+                      <label for="editor-demo-nombre" class="form-label small mb-1">Nombre de la DEMO</label>
+                      <input type="text" id="editor-demo-nombre" class="form-control form-control-sm bg-dark text-light border-secondary" placeholder="Rutina excavación rápida" required />
+                    </div>
+                    <div class="col-12 col-sm-6">
+                      <label for="editor-demo-desc" class="form-label small mb-1">Descripción</label>
+                      <input type="text" id="editor-demo-desc" class="form-control form-control-sm bg-dark text-light border-secondary" placeholder="Secuencia segura en zona despejada" />
+                    </div>
+                  </div>
+
+                  <div class="mb-2 role-admin-only">
+                    <label for="editor-demo-tipo" class="form-label small mb-1">Tipo de DEMO (solo Admin)</label>
+                    <select id="editor-demo-tipo" class="form-select form-select-sm bg-dark text-light border-secondary">
+                      <option value="FABRICA">FABRICA (Visible para el comprador)</option>
+                      <option value="PRIVADA">PRIVADA</option>
+                    </select>
+                  </div>
+
+                  <div class="d-flex justify-content-between align-items-center mt-3 mb-2">
+                    <span class="small fw-bold text-light">Pasos ordenados (200–5000 ms por paso)</span>
+                    <button type="button" id="btn-agregar-paso-demo" class="btn btn-xs btn-outline-warning">
+                      <i class="bi bi-plus-circle me-1" aria-hidden="true"></i>Agregar paso
+                    </button>
+                  </div>
+
+                  <div id="editor-pasos-container" class="d-flex flex-column gap-2 mb-3"></div>
+
+                  <div class="d-flex flex-wrap gap-2">
+                    <button type="submit" class="btn btn-warning btn-sm fw-bold text-dark">
+                      <i class="bi bi-save me-1" aria-hidden="true"></i>Guardar DEMO en RDS
+                    </button>
+                    <button type="button" id="btn-cancelar-editor-demo" class="btn btn-outline-secondary btn-sm">Cancelar</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUBVISTA G: AUDITORÍA -->
+        <div id="subtab-auditoria" class="admin-subpane d-none">
+          <div class="admin-card p-3 rounded-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h2 class="h6 text-warning fw-bold text-uppercase mb-0">Bitácora de Auditoría de Seguridad y Administración</h2>
+              <button type="button" id="btn-reload-auditoria" class="btn btn-xs btn-outline-light">
+                <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Recargar
+              </button>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-dark table-sm table-striped mb-0 align-middle small">
+                <thead>
+                  <tr><th>ID</th><th>Fecha</th><th>Acción</th><th>Recurso</th><th>Actor</th><th>Resultado</th><th>Detalle</th></tr>
+                </thead>
+                <tbody id="admin-auditoria-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
       </section>
 
     </div>
@@ -302,6 +760,6 @@
     </p>
   </footer>
 
-  <script type="module" src="./assets/js/main.js?v=15"></script>
+  <script type="module" src="./assets/js/main.js?v=20"></script>
 </body>
 </html>

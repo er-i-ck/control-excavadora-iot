@@ -1,11 +1,12 @@
-/**
- * Controlador de Monitoreo en Tiempo Real (monitorController.js - v15)
+﻿/**
+ * Controlador de Monitoreo en Tiempo Real (monitorController.js - v20)
  */
 
-import { CONFIG, resolverComandoInfo } from "./config.js?v=15";
-import { apiClient } from "./apiClient.js?v=15";
-import { wsClient } from "./wsClient.js?v=15";
-import { extraerCampoFecha, formatearFechaHora } from "./dateUtils.js?v=15";
+import { CONFIG, resolverComandoInfo } from "./config.js?v=20";
+import { apiClient } from "./apiClient.js?v=20";
+import { wsClient } from "./wsClient.js?v=20";
+import { extraerCampoFecha, formatearFechaHora } from "./dateUtils.js?v=20";
+import { sessionStore } from "./sessionStore.js?v=20";
 
 class MonitorController {
   constructor() {
@@ -26,25 +27,42 @@ class MonitorController {
     this.lastWsUpdateLocalMs = 0;
     this.lastProcessedEventSignature = null;
     this.historyRefreshTimer = null;
+    this.initialized = false;
   }
 
   async init() {
-    if (this.btnSyncManual) {
-      this.btnSyncManual.addEventListener("click", () => this.sincronizarTodoPorRest(true));
+    if (!this.initialized) {
+      if (this.btnSyncManual) {
+        this.btnSyncManual.addEventListener("click", () => this.sincronizarTodoPorRest(true));
+      }
+      wsClient.onMessage((payload) => this._handleIncomingWsEvent(payload));
+      wsClient.onReconnect(() => this.sincronizarTodoPorRest(false));
+      this.initialized = true;
     }
+    await this.sincronizarTodoPorRest(true);
+  }
 
-    wsClient.onMessage((payload) => this._handleIncomingWsEvent(payload));
-
-    wsClient.onReconnect(() => {
-      this.sincronizarTodoPorRest(false);
-    });
-
+  async cambiarVehiculo() {
+    this.lastWsUpdateLocalMs = 0;
+    this.lastProcessedEventSignature = null;
+    if (this.historyRefreshTimer) {
+      clearTimeout(this.historyRefreshTimer);
+      this.historyRefreshTimer = null;
+    }
     await this.sincronizarTodoPorRest(true);
   }
 
   async sincronizarTodoPorRest(mostrarEstadoCarga = false) {
+    const idVehiculo = sessionStore.getActiveVehicleId();
     const currentSeq = ++this.syncSequence;
     const syncStartLocalMs = Date.now();
+
+    if (!sessionStore.isAuthenticated() || !idVehiculo) {
+      this._marcarPanelSinDatos("Selecciona una unidad autorizada");
+      this._renderizarTablaHistorial([]);
+      this._setHistoryBadge("Sin unidad activa", "secondary");
+      return;
+    }
 
     if (mostrarEstadoCarga) {
       this._setHistoryBadge("Cargando...", "warning text-dark");
@@ -52,15 +70,15 @@ class MonitorController {
     this._clearMonitorAlert();
 
     const [estadoResult, historialResult] = await Promise.allSettled([
-      apiClient.obtenerUltimoEstadoVehiculo(CONFIG.VEHICULO_ID),
-      apiClient.obtenerHistorialVehiculo(CONFIG.VEHICULO_ID)
+      apiClient.obtenerUltimoEstadoVehiculo(idVehiculo),
+      apiClient.obtenerHistorialVehiculo(idVehiculo)
     ]);
 
     if (currentSeq !== this.syncSequence) return;
 
     let registrosOrdenados = [];
     if (historialResult.status === "fulfilled") {
-      registrosOrdenados = this._ordenarYLimitarDiez(historialResult.value);
+      registrosOrdenados = this._ordenarYLimitarDiez(historialResult.value, idVehiculo);
       this._renderizarTablaHistorial(registrosOrdenados);
       this._setHistoryBadge(`${registrosOrdenados.length} / 10 registros (RDS)`, "success");
     } else {
@@ -74,11 +92,10 @@ class MonitorController {
     }
 
     if (estadoResult.status === "fulfilled" && estadoResult.value) {
-      const estadoObj = estadoResult.value;
       const masRecienteHistorial = registrosOrdenados.length > 0 ? registrosOrdenados[0] : null;
-      this._actualizarPanelDesdeRest(estadoObj, masRecienteHistorial);
+      this._actualizarPanelDesdeRest(estadoResult.value, masRecienteHistorial, idVehiculo);
     } else if (registrosOrdenados.length > 0) {
-      this._actualizarPanelDesdeRest(registrosOrdenados[0], null);
+      this._actualizarPanelDesdeRest(registrosOrdenados[0], null, idVehiculo);
     } else if (estadoResult.status === "rejected") {
       this._marcarPanelSinDatos("Sin datos actualizados (Error REST)");
     } else {
@@ -86,11 +103,12 @@ class MonitorController {
     }
   }
 
-  _actualizarPanelDesdeRest(registroPrimario, registroRespaldo = null) {
+  _actualizarPanelDesdeRest(registroPrimario, registroRespaldo = null, idVehiculo = sessionStore.getActiveVehicleId()) {
     const idCmd =
+      registroPrimario.codigo ??
       registroPrimario.id_comando ??
       registroPrimario.ultimo_comando_id ??
-      registroPrimario.codigo ??
+      registroRespaldo?.codigo ??
       registroRespaldo?.id_comando ??
       null;
 
@@ -104,7 +122,7 @@ class MonitorController {
       registroRespaldo?.comando ||
       null;
 
-    const infoCatalogo = resolverComandoInfo(idCmd ?? nombreRaw);
+    const infoCatalogo = resolverComandoInfo(nombreRaw ?? idCmd);
     const nombreMostrar = infoCatalogo
       ? `${infoCatalogo.etiqueta} (${infoCatalogo.nombre})`
       : nombreRaw || (idCmd ? `Comando #${idCmd}` : "Sin movimientos");
@@ -112,15 +130,12 @@ class MonitorController {
     const rawFecha = extraerCampoFecha(registroPrimario) || extraerCampoFecha(registroRespaldo);
     const { fecha, hora } = formatearFechaHora(rawFecha, "Confirmado en RDS (Sin fecha)");
 
-    const origen =
-      registroPrimario.origen ||
-      registroRespaldo?.origen ||
-      "Persistido en Amazon RDS (REST)";
+    const origen = registroPrimario.origen || registroRespaldo?.origen || "Persistido en Amazon RDS (REST)";
 
     this._pintarTarjetaUltimoMovimiento({
       nombre: nombreMostrar,
       codigoTexto: idCmd !== null && idCmd !== undefined ? `Código / ID: ${idCmd}` : "Código: —",
-      vehiculoTexto: `Vehículo #${registroPrimario.id_vehiculo || CONFIG.VEHICULO_ID}`,
+      vehiculoTexto: `Vehículo #${registroPrimario.id_vehiculo || idVehiculo || "—"}`,
       fecha,
       hora,
       origen,
@@ -132,11 +147,12 @@ class MonitorController {
   _handleIncomingWsEvent(payload) {
     if (!payload || typeof payload !== "object") return;
 
-    const idVehiculo = Number(payload.id_vehiculo || CONFIG.VEHICULO_ID);
-    if (idVehiculo !== CONFIG.VEHICULO_ID) return;
+    const activeId = Number(sessionStore.getActiveVehicleId());
+    const idVehiculo = Number(payload.id_vehiculo || activeId);
+    if (!activeId || idVehiculo !== activeId) return;
 
     const evento = payload.evento || "";
-    const signature = `${evento}-${payload.id_comando || ""}-${payload.comando || ""}-${payload.id_movimiento || ""}`;
+    const signature = `${evento}-${payload.id_comando || ""}-${payload.comando || ""}-${payload.nombre_comando || ""}`;
     const now = Date.now();
 
     if (this.lastProcessedEventSignature === signature && now - this.lastWsUpdateLocalMs < 150) {
@@ -144,9 +160,8 @@ class MonitorController {
     }
 
     if (evento === "ESTADO_ACTUAL" && Array.isArray(payload.estado) && payload.estado.length > 0) {
-      const est = payload.estado[0];
       if (now >= this.lastWsUpdateLocalMs) {
-        this._actualizarPanelDesdeRest(est, null);
+        this._actualizarPanelDesdeRest(payload.estado[0], null, idVehiculo);
       }
       return;
     }
@@ -155,11 +170,11 @@ class MonitorController {
       this.lastWsUpdateLocalMs = now;
       this.lastProcessedEventSignature = signature;
 
-      const idCmd = payload.id_comando ?? payload.codigo ?? null;
-      const infoCmd = resolverComandoInfo(idCmd ?? payload.comando);
+      const idCmd = payload.codigo_comando ?? payload.id_comando ?? null;
+      const infoCmd = resolverComandoInfo(payload.nombre_comando ?? idCmd ?? payload.comando);
       const nombreMostrar = infoCmd
         ? `${infoCmd.etiqueta} (${infoCmd.nombre})`
-        : payload.comando || `Comando #${idCmd}`;
+        : payload.nombre_comando || payload.comando || `Comando #${idCmd}`;
 
       const rawFecha = extraerCampoFecha(payload);
       const { fecha, hora } = formatearFechaHora(rawFecha, "En vivo · Sincronizando fecha RDS...");
@@ -179,7 +194,7 @@ class MonitorController {
       return;
     }
 
-    if (evento === "MOVIMIENTO_DEMO" || evento === "INICIO_DEMO" || evento === "FIN_DEMO" || evento === "DEMO_CANCELADA") {
+    if (["MOVIMIENTO_DEMO", "INICIO_DEMO", "FIN_DEMO", "DEMO_CANCELADA"].includes(evento)) {
       this.lastWsUpdateLocalMs = now;
       this.lastProcessedEventSignature = signature;
 
@@ -187,9 +202,8 @@ class MonitorController {
       let codigoTexto = "Secuencia DEMO";
 
       if (evento === "MOVIMIENTO_DEMO") {
-        const idCmd = payload.id_comando ?? null;
-        const infoCmd = resolverComandoInfo(idCmd ?? payload.comando);
-        const cmdLabel = infoCmd ? infoCmd.etiqueta : payload.comando || `ID ${idCmd}`;
+        const infoCmd = resolverComandoInfo(payload.comando ?? payload.id_comando);
+        const cmdLabel = infoCmd ? infoCmd.etiqueta : payload.comando || `ID ${payload.id_comando}`;
         nombreDemo = `DEMO · ${cmdLabel}`;
         codigoTexto = `Duración: ${payload.duracion_ms || 0} ms`;
       } else if (evento === "INICIO_DEMO") {
@@ -217,21 +231,19 @@ class MonitorController {
   }
 
   _programarReconciliacionHistorial() {
-    if (this.historyRefreshTimer) {
-      clearTimeout(this.historyRefreshTimer);
-    }
+    if (this.historyRefreshTimer) clearTimeout(this.historyRefreshTimer);
     this.historyRefreshTimer = setTimeout(async () => {
       this.historyRefreshTimer = null;
       await this.sincronizarTodoPorRest(false);
     }, 350);
   }
 
-  _ordenarYLimitarDiez(listaCruda) {
+  _ordenarYLimitarDiez(listaCruda, idVehiculo) {
     if (!Array.isArray(listaCruda) || listaCruda.length === 0) return [];
 
     const filtrados = listaCruda.filter((item) => {
       if (item && item.id_vehiculo !== undefined && item.id_vehiculo !== null) {
-        return Number(item.id_vehiculo) === CONFIG.VEHICULO_ID;
+        return Number(item.id_vehiculo) === Number(idVehiculo);
       }
       return true;
     });
@@ -253,16 +265,11 @@ class MonitorController {
     unicos.sort((a, b) => {
       const idA = Number(a.id_historial ?? a.id_movimiento ?? a.id ?? NaN);
       const idB = Number(b.id_historial ?? b.id_movimiento ?? b.id ?? NaN);
-
       const fechaA = formatearFechaHora(extraerCampoFecha(a)).timestampMs;
       const fechaB = formatearFechaHora(extraerCampoFecha(b)).timestampMs;
 
-      if (fechaA && fechaB && fechaA !== fechaB) {
-        return fechaB - fechaA;
-      }
-      if (!Number.isNaN(idA) && !Number.isNaN(idB) && idA !== idB) {
-        return idB - idA;
-      }
+      if (fechaA && fechaB && fechaA !== fechaB) return fechaB - fechaA;
+      if (!Number.isNaN(idA) && !Number.isNaN(idB) && idA !== idB) return idB - idA;
       return 0;
     });
 
@@ -291,9 +298,9 @@ class MonitorController {
       tdNum.className = "fw-bold text-warning";
       tdNum.textContent = String(index + 1);
 
-      const idCmd = item.id_comando ?? item.codigo ?? null;
+      const idCmd = item.codigo ?? item.id_comando ?? null;
       const nombreRaw = item.nombre_comando || item.comando || item.movimiento || item.nombre || null;
-      const infoCmd = resolverComandoInfo(idCmd ?? nombreRaw);
+      const infoCmd = resolverComandoInfo(nombreRaw ?? idCmd);
 
       const tdMov = document.createElement("td");
       tdMov.className = "fw-semibold text-light";
@@ -304,18 +311,12 @@ class MonitorController {
       const idRegistro = item.id_historial ?? item.id_movimiento ?? item.id ?? null;
       const tdCodigo = document.createElement("td");
       tdCodigo.className = "text-info small";
-      if (idCmd !== null && idRegistro !== null) {
-        tdCodigo.textContent = `Cmd ${idCmd} · Reg #${idRegistro}`;
-      } else if (idCmd !== null) {
-        tdCodigo.textContent = `Cmd ${idCmd}`;
-      } else if (idRegistro !== null) {
-        tdCodigo.textContent = `Reg #${idRegistro}`;
-      } else {
-        tdCodigo.textContent = "—";
-      }
+      if (idCmd !== null && idRegistro !== null) tdCodigo.textContent = `Cmd ${idCmd} · Reg #${idRegistro}`;
+      else if (idCmd !== null) tdCodigo.textContent = `Cmd ${idCmd}`;
+      else if (idRegistro !== null) tdCodigo.textContent = `Reg #${idRegistro}`;
+      else tdCodigo.textContent = "—";
 
-      const rawFecha = extraerCampoFecha(item);
-      const { fecha, hora } = formatearFechaHora(rawFecha, "Sin fecha");
+      const { fecha, hora } = formatearFechaHora(extraerCampoFecha(item), "Sin fecha");
 
       const tdFecha = document.createElement("td");
       tdFecha.className = "text-secondary small";
@@ -325,12 +326,7 @@ class MonitorController {
       tdHora.className = "text-light small font-monospace";
       tdHora.textContent = hora;
 
-      tr.appendChild(tdNum);
-      tr.appendChild(tdMov);
-      tr.appendChild(tdCodigo);
-      tr.appendChild(tdFecha);
-      tr.appendChild(tdHora);
-
+      tr.append(tdNum, tdMov, tdCodigo, tdFecha, tdHora);
       this.tableBodyEl.appendChild(tr);
     });
   }
@@ -365,7 +361,7 @@ class MonitorController {
     this._pintarTarjetaUltimoMovimiento({
       nombre: motivo,
       codigoTexto: "Código: —",
-      vehiculoTexto: `Vehículo #${CONFIG.VEHICULO_ID}`,
+      vehiculoTexto: `Vehículo #${sessionStore.getActiveVehicleId() || "—"}`,
       fecha: "—",
       hora: "—",
       origen: "Esperando datos de API / WSS",

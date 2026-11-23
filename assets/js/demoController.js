@@ -1,12 +1,12 @@
-/**
- * Controlador de Secuencias DEMO (Demo Controller - v12)
+﻿/**
+ * Controlador de Secuencias DEMO (demoController.js - v20)
  */
 
-import { CONFIG } from "./config.js?v=12";
-import { apiClient } from "./apiClient.js?v=12";
-import { wsClient } from "./wsClient.js?v=12";
-import { movementController } from "./movementController.js?v=12";
-import { uiState } from "./uiState.js?v=12";
+import { apiClient } from "./apiClient.js?v=20";
+import { wsClient } from "./wsClient.js?v=20";
+import { movementController } from "./movementController.js?v=20";
+import { uiState } from "./uiState.js?v=20";
+import { sessionStore } from "./sessionStore.js?v=20";
 
 class DemoController {
   constructor() {
@@ -18,33 +18,32 @@ class DemoController {
     this.demos = [];
     this.currentDemoDurationMs = 15000;
     this.autoUnlockTimer = null;
+    this.initialized = false;
   }
 
   async init() {
-    this._bindEvents();
+    if (!this.initialized) {
+      this._bindEvents();
+      movementController.onEmergencyStop(() => {
+        if (uiState.isDemoCurrentlyRunning()) {
+          this.cancelarDemoActiva(true);
+        }
+      });
+      wsClient.onMessage((payload) => this._handleWsDemoEvents(payload));
+      this.initialized = true;
+    }
     await this.cargarCatalogoDemos();
-
-    movementController.onEmergencyStop(() => {
-      if (uiState.isDemoCurrentlyRunning()) {
-        this.cancelarDemoActiva(true);
-      }
-    });
-
-    wsClient.onMessage((payload) => this._handleWsDemoEvents(payload));
   }
 
   _bindEvents() {
     if (this.selectEl) {
       this.selectEl.addEventListener("change", () => {
-        const idDemo = this.selectEl.value;
-        this.mostrarPasosDemo(idDemo);
+        this.mostrarPasosDemo(this.selectEl.value);
       });
     }
-
     if (this.btnStart) {
       this.btnStart.addEventListener("click", () => this.iniciarDemoSeleccionada());
     }
-
     if (this.btnCancel) {
       this.btnCancel.addEventListener("click", () => this.cancelarDemoActiva(false));
     }
@@ -52,46 +51,47 @@ class DemoController {
 
   async cargarCatalogoDemos() {
     if (!this.selectEl) return;
-    this.selectEl.innerHTML = "";
+    const idVehiculo = sessionStore.getActiveVehicleId();
 
-    const defaultOpt = document.createElement("option");
-    defaultOpt.value = "";
-    defaultOpt.textContent = "Cargando catálogo de DEMOs...";
-    this.selectEl.appendChild(defaultOpt);
+    if (!sessionStore.isAuthenticated() || !idVehiculo) {
+      this.demos = [];
+      this.selectEl.innerHTML = '<option value="">Selecciona una unidad autorizada</option>';
+      if (this.previewEl) this.previewEl.textContent = "Inicia sesión para consultar DEMOs de tu unidad.";
+      return;
+    }
+
+    if (sessionStore.getRole() === "INVITADO") {
+      this.demos = [];
+      this.selectEl.innerHTML = '<option value="">Modo Invitado: usa el joystick y DETENER</option>';
+      if (this.previewEl) this.previewEl.textContent = "La sesión temporal de invitado permite control manual básico con tiempo limitado.";
+      return;
+    }
+
+    this.selectEl.innerHTML = '<option value="">Cargando catálogo de DEMOs...</option>';
 
     try {
-      const lista = await apiClient.obtenerDemosVehiculo(CONFIG.VEHICULO_ID);
+      const lista = await apiClient.obtenerDemosVehiculo(idVehiculo);
       this.demos = lista.filter((d) => d.activo !== 0);
 
       this.selectEl.innerHTML = "";
       if (this.demos.length === 0) {
-        const emptyOpt = document.createElement("option");
-        emptyOpt.value = "";
-        emptyOpt.textContent = "No hay secuencias DEMO registradas";
-        this.selectEl.appendChild(emptyOpt);
+        this.selectEl.innerHTML = '<option value="">Sin DEMOs para esta unidad (crea una en el Editor)</option>';
+        if (this.previewEl) this.previewEl.textContent = "Puedes crear una nueva DEMO desde la pestaña de Administración / Mis Vehículos.";
         return;
       }
-
-      const placeholder = document.createElement("option");
-      placeholder.value = "";
-      placeholder.textContent = "-- Selecciona una secuencia DEMO --";
-      this.selectEl.appendChild(placeholder);
 
       this.demos.forEach((demo) => {
         const opt = document.createElement("option");
         opt.value = String(demo.id_demo);
-        opt.textContent = `#${demo.id_demo} · ${demo.nombre} (${demo.descripcion || "Secuencia IoT"})`;
+        const tipoTag = demo.tipo_demo === "PRIVADA" ? "[Privada]" : "[Fábrica]";
+        opt.textContent = `${tipoTag} #${demo.id_demo} · ${demo.nombre}`;
         this.selectEl.appendChild(opt);
       });
 
       this.selectEl.value = String(this.demos[0].id_demo);
       await this.mostrarPasosDemo(this.demos[0].id_demo);
     } catch {
-      this.selectEl.innerHTML = "";
-      const errOpt = document.createElement("option");
-      errOpt.value = "";
-      errOpt.textContent = "No se pudo cargar el catálogo de DEMOs";
-      this.selectEl.appendChild(errOpt);
+      this.selectEl.innerHTML = '<option value="">No se pudo cargar el catálogo de DEMOs</option>';
     }
   }
 
@@ -118,19 +118,19 @@ class DemoController {
       this.currentDemoDurationMs = Math.max(3000, totalMs);
 
       this.previewEl.innerHTML = "";
-      const listaOl = document.createElement("div");
-      listaOl.className = "d-flex flex-wrap gap-1";
+      const lista = document.createElement("div");
+      lista.className = "d-flex flex-wrap gap-1";
 
       pasos.forEach((paso, idx) => {
         const chip = document.createElement("span");
         chip.className = "badge bg-dark text-warning border border-secondary px-2 py-1";
-        const nombreCmd = paso.comando || paso.nombre || `ID ${paso.id_comando}`;
+        const nombreCmd = paso.nombre_comando || paso.comando || paso.nombre || `ID ${paso.id_comando}`;
         const orden = paso.orden || idx + 1;
         chip.textContent = `${orden}. ${nombreCmd} (${paso.duracion_ms}ms / pausa ${paso.pausa_ms}ms)`;
-        listaOl.appendChild(chip);
+        lista.appendChild(chip);
       });
 
-      this.previewEl.appendChild(listaOl);
+      this.previewEl.appendChild(lista);
     } catch {
       this.previewEl.textContent = "No fue posible obtener el detalle de pasos de esta DEMO.";
     }
@@ -138,20 +138,20 @@ class DemoController {
 
   async iniciarDemoSeleccionada() {
     if (uiState.isDemoCurrentlyRunning()) return;
-
+    const idVehiculo = sessionStore.getActiveVehicleId();
     const idDemo = this.selectEl ? this.selectEl.value : "";
-    if (!idDemo) {
+
+    if (!idVehiculo || !idDemo) {
       uiState.showAlert("Selecciona primero una secuencia DEMO del catálogo.");
       return;
     }
 
     uiState.syncDemoLockState(true, `Ejecutando DEMO #${idDemo}...`, "warning text-dark");
     uiState.markCommandRequested(`Iniciar DEMO #${idDemo}`, idDemo);
-
     this._programarDesbloqueoRespaldo(this.currentDemoDurationMs + 1500);
 
     try {
-      const res = await apiClient.iniciarDemo(idDemo, CONFIG.VEHICULO_ID);
+      const res = await apiClient.iniciarDemo(idDemo, idVehiculo);
       uiState.markCommandAcceptedByApi(`DEMO #${idDemo} en curso`, res.status);
     } catch (error) {
       this._clearAutoUnlockTimer();
@@ -162,8 +162,11 @@ class DemoController {
 
   async cancelarDemoActiva(silent = false) {
     this._clearAutoUnlockTimer();
+    const idVehiculo = sessionStore.getActiveVehicleId();
+    if (!idVehiculo) return;
+
     try {
-      const res = await apiClient.cancelarDemo(CONFIG.VEHICULO_ID);
+      const res = await apiClient.cancelarDemo(idVehiculo);
       uiState.syncDemoLockState(false, "Cancelada", "secondary");
       if (!silent) {
         uiState.markCommandAcceptedByApi("DEMO Cancelada", res.status);

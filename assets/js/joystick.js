@@ -1,9 +1,9 @@
-/**
+﻿/**
  * Módulo de Joystick Circular Intuitivo (Táctil + Mouse)
  */
 
-import { movementController } from "./movementController.js?v=12";
-import { uiState } from "./uiState.js?v=12";
+import { movementController } from "./movementController.js?v=20";
+import { uiState } from "./uiState.js?v=20";
 
 export class JoystickComponent {
   constructor(zoneId = "joystick-zone", knobId = "joystick-knob") {

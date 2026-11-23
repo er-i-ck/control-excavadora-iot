@@ -1,57 +1,60 @@
-/**
- * Módulo de Navegación entre CONTROL y MONITOREO (navigation.js)
- * Cambia de vista sin recargar el documento, preserva accesibilidad por teclado
- * y dispara la sincronización REST al entrar a MONITOREO (Puntos 3.1, 3.5 y 7.4).
+﻿/**
+ * Módulo de Navegación de 3 Vistas: CONTROL | MONITOREO | ADMINISTRACIÓN (navigation.js - v20)
  */
 
 class NavigationController {
   constructor() {
-    this.currentView = "control";
+    this.currentView = "admin";
     this.btnControl = document.getElementById("tab-btn-control");
     this.btnMonitor = document.getElementById("tab-btn-monitor");
+    this.btnAdmin = document.getElementById("tab-btn-admin");
+
     this.viewControl = document.getElementById("view-control");
     this.viewMonitor = document.getElementById("view-monitor");
+    this.viewAdmin = document.getElementById("view-admin");
+
     this.onViewChangeCallbacks = new Set();
   }
 
   init() {
-    if (this.btnControl) {
-      this.btnControl.addEventListener("click", () => this.switchView("control"));
-    }
-    if (this.btnMonitor) {
-      this.btnMonitor.addEventListener("click", () => this.switchView("monitor"));
-    }
+    if (this.btnControl) this.btnControl.addEventListener("click", () => this.switchView("control"));
+    if (this.btnMonitor) this.btnMonitor.addEventListener("click", () => this.switchView("monitor"));
+    if (this.btnAdmin) this.btnAdmin.addEventListener("click", () => this.switchView("admin"));
   }
 
   onViewChange(callback) {
     this.onViewChangeCallbacks.add(callback);
   }
 
+  updateTabLabels(role) {
+    const adminLabel = document.getElementById("tab-label-admin");
+    if (!adminLabel) return;
+    if (role === "ADMIN") adminLabel.textContent = "ADMINISTRACIÓN";
+    else if (role === "USUARIO") adminLabel.textContent = "MIS VEHÍCULOS";
+    else adminLabel.textContent = "CATÁLOGO / DEMO";
+  }
+
   switchView(targetView) {
-    if (targetView !== "control" && targetView !== "monitor") return;
+    if (!["control", "monitor", "admin"].includes(targetView)) return;
     this.currentView = targetView;
 
-    const isControl = targetView === "control";
+    const map = [
+      { key: "control", btn: this.btnControl, view: this.viewControl },
+      { key: "monitor", btn: this.btnMonitor, view: this.viewMonitor },
+      { key: "admin", btn: this.btnAdmin, view: this.viewAdmin }
+    ];
 
-    if (this.viewControl) {
-      this.viewControl.classList.toggle("d-none", !isControl);
-      this.viewControl.setAttribute("aria-hidden", String(!isControl));
-    }
-
-    if (this.viewMonitor) {
-      this.viewMonitor.classList.toggle("d-none", isControl);
-      this.viewMonitor.setAttribute("aria-hidden", String(isControl));
-    }
-
-    if (this.btnControl) {
-      this.btnControl.classList.toggle("active", isControl);
-      this.btnControl.setAttribute("aria-selected", String(isControl));
-    }
-
-    if (this.btnMonitor) {
-      this.btnMonitor.classList.toggle("active", !isControl);
-      this.btnMonitor.setAttribute("aria-selected", String(!isControl));
-    }
+    map.forEach(({ key, btn, view }) => {
+      const active = key === targetView;
+      if (view) {
+        view.classList.toggle("d-none", !active);
+        view.setAttribute("aria-hidden", String(!active));
+      }
+      if (btn) {
+        btn.classList.toggle("active", active);
+        btn.setAttribute("aria-selected", String(active));
+      }
+    });
 
     this.onViewChangeCallbacks.forEach((cb) => cb(targetView));
   }

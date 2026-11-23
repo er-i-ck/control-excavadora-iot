@@ -1,8 +1,9 @@
-/**
- * Módulo de Estado de Interfaz (UI State - v12)
- * Gestiona los 3 indicadores de infraestructura (WSS, AWS, RDS),
- * la barra de evidencia de 3 pasos y el bloqueo/desbloqueo directo de DEMO.
+﻿/**
+ * Módulo de Estado de Interfaz (uiState.js - v20)
+ * Gestiona indicadores (WSS, AWS, RDS), barra de evidencia, capacidades por modelo y bloqueo DEMO.
  */
+
+import { CONFIG } from "./config.js?v=20";
 
 class UIStateManager {
   constructor() {
@@ -79,10 +80,40 @@ class UIStateManager {
     }
   }
 
+  applyAllowedCommands(allowedCodes = [], isGuest = false) {
+    const allowedSet = new Set(allowedCodes.map(Number));
+    allowedSet.add(5); // PARAR siempre activo
+
+    document.querySelectorAll("[data-command-key]").forEach((btn) => {
+      const key = btn.getAttribute("data-command-key");
+      const cmd = CONFIG.COMANDOS[key];
+      const permitido = !cmd || allowedSet.has(cmd.codigo);
+      btn.dataset.capDisabled = permitido ? "false" : "true";
+      btn.disabled = !permitido || (this.isDemoCurrentlyRunning() && key !== "PARAR");
+      btn.classList.toggle("opacity-25", !permitido);
+      btn.title = permitido
+        ? cmd?.etiqueta || key
+        : isGuest
+          ? "Comando restringido en modo Invitado"
+          : "No soportado por el modelo de esta unidad";
+    });
+
+    const cardDemo = document.querySelector(".card-demo");
+    if (cardDemo) {
+      const btnStart = document.getElementById("btn-start-demo");
+      const selectDemo = document.getElementById("select-demo");
+      if (isGuest) {
+        if (btnStart) btnStart.disabled = true;
+        if (selectDemo) selectDemo.disabled = true;
+        this.setDemoStatus("Solo control básico (Invitado)", "info text-dark");
+      }
+    }
+  }
+
   markCommandRequested(etiquetaComando, idComando) {
     const hora = new Date().toLocaleTimeString();
     if (this.traceRequested) {
-      this.traceRequested.textContent = `${etiquetaComando} (ID ${idComando}) · ${hora}`;
+      this.traceRequested.textContent = `${etiquetaComando} (Cmd ${idComando}) · ${hora}`;
       this.traceRequested.className = "telemetry-value text-warning";
     }
     if (this.traceApi) {
@@ -122,11 +153,6 @@ class UIStateManager {
     this.demoBadge.className = `badge bg-${style} badge-xs`;
   }
 
-  /**
-   * Sincroniza directamente en el DOM el estado de bloqueo/desbloqueo de la DEMO.
-   * Garantiza que al llegar FIN_DEMO o DEMO_CANCELADA por WSS, el joystick y los botones
-   * queden libres inmediatamente.
-   */
   syncDemoLockState(isRunning, badgeText, badgeStyle = null) {
     document.body.dataset.demoRunning = isRunning ? "true" : "false";
 
@@ -140,8 +166,9 @@ class UIStateManager {
 
     document.querySelectorAll("[data-command-key]").forEach((btn) => {
       const key = btn.getAttribute("data-command-key");
+      const capDisabled = btn.dataset.capDisabled === "true";
       if (key !== "PARAR") {
-        btn.disabled = isRunning;
+        btn.disabled = isRunning || capDisabled;
       }
     });
 

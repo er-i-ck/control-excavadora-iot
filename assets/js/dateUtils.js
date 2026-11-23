@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Utilidades de Fecha y Hora (dateUtils.js - v15)
  * Convierte las marcas temporales UTC de Amazon RDS a hora local de México (UTC-6).
  */
