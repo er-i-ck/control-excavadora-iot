@@ -769,6 +769,39 @@
                 <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Recargar
               </button>
             </div>
+                     <div class="row g-2 mb-2 align-items-end">
+           <div class="col-6 col-md-3">
+             <label for="audit-fecha-inicio" class="form-label small mb-1">Desde</label>
+             <input type="date" id="audit-fecha-inicio" class="form-control form-control-sm bg-dark text-light border-secondary" />
+           </div>
+           <div class="col-6 col-md-3">
+             <label for="audit-fecha-fin" class="form-label small mb-1">Hasta</label>
+             <input type="date" id="audit-fecha-fin" class="form-control form-control-sm bg-dark text-light border-secondary" />
+           </div>
+           <div class="col-12 col-md-3">
+             <label for="audit-tipo-accion" class="form-label small mb-1">Tipo de evento</label>
+             <select id="audit-tipo-accion" class="form-select form-select-sm bg-dark text-light border-secondary">
+               <option value="">Todos los eventos</option>
+               <option value="LOGIN">LOGIN</option>
+               <option value="LOGIN_GOOGLE">LOGIN_GOOGLE</option>
+               <option value="LOGIN_FALLIDO">LOGIN_FALLIDO</option>
+               <option value="LOGOUT">LOGOUT</option>
+               <option value="REGISTRO_USUARIO">REGISTRO_USUARIO</option>
+               <option value="REGISTRO_GOOGLE">REGISTRO_GOOGLE</option>
+               <option value="CREAR_UNIDAD">CREAR_UNIDAD</option>
+               <option value="ASIGNAR_UNIDAD">ASIGNAR_UNIDAD</option>
+               <option value="BAJA_LOGICA_UNIDAD">BAJA_LOGICA_UNIDAD</option>
+               <option value="INICIO_SESION_INVITADO">INICIO_SESION_INVITADO</option>
+               <option value="FIN_SESION_INVITADO">FIN_SESION_INVITADO</option>
+               <option value="CREAR_DEMO">CREAR_DEMO</option>
+               <option value="INICIAR_DEMO">INICIAR_DEMO</option>
+             </select>
+           </div>
+           <div class="col-12 col-md-3 d-flex gap-1">
+             <button type="button" id="btn-filtrar-auditoria" class="btn btn-warning btn-sm fw-bold text-dark flex-grow-1">Filtrar</button>
+             <button type="button" id="btn-limpiar-auditoria" class="btn btn-outline-secondary btn-sm">Limpiar</button>
+           </div>
+         </div>
             <div class="table-responsive">
               <table class="table table-dark table-sm table-striped mb-0 align-middle small">
                 <thead>
@@ -796,4 +829,5 @@
   <script type="module" src="./assets/js/main.js?v=20"></script>
 </body>
 </html>
+
 
