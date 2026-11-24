@@ -1,5 +1,5 @@
 /* ==========================================================================
-   HOJA DE ESTILOS COMPLETA (PRÁCTICAS 4.1 Y 4.2) - FIJA EN 100dvh SIN SCROLL
+   HOJA DE ESTILOS PRINCIPAL (v21) - LAYOUT FIJO 100dvh + CRUCETA DERECHA
    ========================================================================== */
 
 :root {
@@ -27,7 +27,7 @@ body.app-viewport {
   max-height: 100dvh;
   margin: 0;
   padding: 0;
-  overflow: hidden; /* Impide que la pantalla se desplace hacia abajo */
+  overflow: hidden; /* Impide scroll de página en CONTROL y MONITOREO */
   background-color: var(--bg-main);
   color: var(--text-light);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif;
@@ -37,7 +37,7 @@ body.app-viewport {
 }
 
 .max-w-app {
-  max-width: 1180px;
+  max-width: 1280px;
   width: 100%;
 }
 
@@ -53,88 +53,151 @@ body.app-viewport {
   overflow: hidden;
 }
 
-/* Encabezado y Pestañas CONTROL / MONITOREO */
+/* ==========================================================================
+   ENCABEZADO COMPARTIDO (MOBILE FIRST VERTICAL -> LANDSCAPE -> DESKTOP)
+   ========================================================================== */
 .header-bar {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.header-brand {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "brand"
+    "session"
+    "status";
+  gap: 0.28rem;
   min-width: 0;
 }
 
+.header-brand {
+  grid-area: brand;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "icon copy refresh"
+    "nav nav nav";
+  align-items: center;
+  gap: 0.28rem 0.4rem;
+  min-width: 0;
+}
+
+.brand-icon {
+  grid-area: icon;
+  flex-shrink: 0;
+}
+
+.brand-copy {
+  grid-area: copy;
+  min-width: 0;
+}
+
+#btn-refresh-health {
+  grid-area: refresh;
+}
+
 .title-main {
-  font-size: 0.8rem;
+  font-size: 0.82rem;
+  line-height: 1.15;
 }
 
 .subtitle-main {
-  font-size: 0.58rem;
+  font-size: 0.6rem;
+  line-height: 1.15;
 }
 
 .btn-xs {
-  padding: 0.12rem 0.42rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.22rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding: 0.16rem 0.48rem;
   font-size: 0.68rem;
-  min-height: 26px;
+  min-height: 28px;
+  line-height: 1.1;
 }
 
 .badge-xs {
   font-size: 0.62rem;
-  padding: 0.16em 0.42em;
+  padding: 0.18em 0.46em;
+  white-space: nowrap;
 }
 
 /* Selector de vista protegido contra inversión de colores en Android Dark Mode */
 .nav-view-switcher {
-  display: inline-flex;
+  grid-area: nav;
+  display: flex;
+  align-items: stretch;
+  width: 100%;
   background-color: #0b1120;
   border: 1px solid #475569;
-  border-radius: 0.4rem;
+  border-radius: 0.45rem;
   padding: 2px;
   gap: 2px;
-  flex-shrink: 0;
+  min-width: 0;
   forced-color-adjust: none;
 }
 
 .btn-nav-tab {
+  flex: 1 1 auto;
   background: transparent;
   color: #94a3b8;
   border: 1px solid transparent;
-  border-radius: 0.3rem;
-  padding: 0.18rem 0.48rem;
-  min-height: 26px;
-  font-size: 0.64rem;
+  border-radius: 0.34rem;
+  padding: 0.24rem 0.26rem;
+  min-height: 30px;
+  font-size: 0.58rem;
   font-weight: 700;
-  letter-spacing: 0.2px;
+  letter-spacing: 0.1px;
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  justify-content: center;
+  gap: 0.2rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
   cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   forced-color-adjust: none;
+}
+
+.btn-nav-tab i {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+}
+
+.btn-nav-tab span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-nav-tab:hover:not(.active) {
+  color: #e2e8f0;
+  background-color: rgba(148, 163, 184, 0.1);
 }
 
 .btn-nav-tab.active {
   background-color: rgba(56, 189, 248, 0.22) !important;
   color: #ffffff !important;
   border-color: #38bdf8 !important;
-  box-shadow: 0 0 8px rgba(56, 189, 248, 0.35);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.32);
 }
 
 /* 3 Indicadores de estado en 1 sola fila horizontal */
 .status-grid {
+  grid-area: status;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.25rem;
+  min-width: 0;
 }
 
 .status-pill {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
-  padding: 0.16rem 0.32rem;
-  border-radius: 0.35rem;
+  gap: 0.26rem;
+  padding: 0.18rem 0.36rem;
+  border-radius: 0.38rem;
   border: 1px solid var(--border-color);
   background-color: var(--bg-card);
   font-size: 0.62rem;
@@ -149,7 +212,7 @@ body.app-viewport {
 .status-text {
   display: flex;
   flex-direction: column;
-  line-height: 1.05;
+  line-height: 1.08;
   min-width: 0;
   overflow: hidden;
 }
@@ -202,12 +265,12 @@ body.app-viewport {
 }
 
 /* ==========================================================================
-   VISTA 1: CONTROL (Diseño de dos columnas + DEMO abajo en Vertical)
+   VISTA 1: CONTROL (Joystick Izquierdo + Cruceta Derecha + DEMO)
    ========================================================================== */
 .control-view-layout {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 0.32rem;
   min-height: 0;
   overflow: hidden;
 }
@@ -228,6 +291,7 @@ body.app-viewport {
   font-size: 0.52rem;
   color: var(--text-muted);
   text-transform: uppercase;
+  letter-spacing: 0.2px;
 }
 
 .telemetry-value {
@@ -238,11 +302,10 @@ body.app-viewport {
   text-overflow: ellipsis;
 }
 
-/* Rejilla de Control igual al diseño aprobado:
-   Izquierda: Dirección y Joystick | Derecha: Brazo y Auxiliares | Abajo: DEMO */
+/* Rejilla Mobile Portrait: Joystick (izq) + Cruceta/Aux (der) arriba | DEMO abajo */
 .cockpit-columns {
   display: grid;
-  grid-template-columns: 47% 1fr;
+  grid-template-columns: 44% 1fr;
   grid-template-rows: minmax(0, 1fr) auto;
   grid-template-areas:
     "joystick actions"
@@ -263,6 +326,7 @@ body.app-viewport {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  gap: 0.3rem;
   min-height: 0;
   min-width: 0;
   overflow: hidden;
@@ -271,26 +335,62 @@ body.app-viewport {
 .card-heading {
   font-size: 0.66rem;
   letter-spacing: 0.2px;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  min-width: 0;
 }
 
-/* Joystick Circular */
+#joystick-direction-badge {
+  max-width: 58%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 440px) {
+  .card-joystick > .d-flex {
+    flex-wrap: wrap;
+    gap: 0.18rem;
+  }
+
+  .card-joystick .card-heading {
+    font-size: 0.62rem;
+  }
+
+  #joystick-direction-badge {
+    max-width: 100%;
+    font-size: 0.56rem;
+    padding: 0.14em 0.38em;
+  }
+
+  .dpad-hint-badge {
+    display: none;
+  }
+}
+
+/* Joystick Circular — autoajustable al contenedor para cero solapamientos */
 .joystick-wrapper {
   flex: 1 1 0%;
   min-height: 0;
+  width: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
+  overflow: hidden;
+  container-type: size;
   padding: 2px;
 }
 
 .joystick-zone {
   position: relative;
-  width: clamp(115px, min(38vw, 25dvh), 180px);
-  height: clamp(115px, min(38vw, 25dvh), 180px);
+  width: min(calc(100cqw - 6px), calc(100cqh - 6px), 175px);
+  height: min(calc(100cqw - 6px), calc(100cqh - 6px), 175px);
+  min-width: 82px;
+  min-height: 82px;
   border-radius: 50%;
-  background: radial-gradient(circle, #1e293b 0%, #0f172a 75%);
+  background: radial-gradient(circle, #1e293b 0%, #0b1120 78%);
   border: 2.5px solid #475569;
-  box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.65);
+  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.7), 0 4px 12px rgba(0, 0, 0, 0.35);
   touch-action: none;
   display: flex;
   justify-content: center;
@@ -300,6 +400,7 @@ body.app-viewport {
 
 .joystick-zone.is-active {
   border-color: var(--accent-amber);
+  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.7), 0 0 14px rgba(245, 158, 11, 0.32);
 }
 
 .joystick-center-mark {
@@ -313,15 +414,19 @@ body.app-viewport {
 
 .joystick-knob {
   position: absolute;
-  width: clamp(44px, min(14vw, 9.5dvh), 64px);
-  height: clamp(44px, min(14vw, 9.5dvh), 64px);
+  width: 36%;
+  height: 36%;
+  min-width: 34px;
+  min-height: 34px;
+  max-width: 78px;
+  max-height: 78px;
   border-radius: 50%;
   background: linear-gradient(145deg, #f59e0b, #d97706);
   color: #0f172a;
   display: flex;
   justify-content: center;
   align-items: center;
-  font-size: 1.2rem;
+  font-size: clamp(0.95rem, 2.2vmin, 1.45rem);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.55);
   border: 2px solid #fef3c7;
   cursor: grab;
@@ -340,71 +445,186 @@ body.app-viewport {
 .joy-cardinal {
   position: absolute;
   color: #64748b;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   pointer-events: none;
 }
-.joy-n { top: 3px; }
-.joy-s { bottom: 3px; }
-.joy-w { left: 5px; }
-.joy-e { right: 5px; }
+.joy-n { top: 4px; }
+.joy-s { bottom: 4px; }
+.joy-w { left: 6px; }
+.joy-e { right: 6px; }
 
 /* Botón prioritario DETENER */
 .btn-stop-priority {
   min-height: 38px;
   padding: 0.25rem 0.5rem;
   font-size: 0.78rem;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.35px;
   border: 1.5px solid #fca5a5;
   box-shadow: 0 2px 8px rgba(239, 68, 68, 0.35);
 }
 
-/* Rejilla 2x4 de Brazo y Auxiliares */
-.action-grid {
+/* ==========================================================================
+   CRUCETA DERECHA (D-PAD) + MINI-GRID DE AUXILIARES (.card-actions)
+   ========================================================================== */
+.dpad-stage {
   flex: 1 1 0%;
   min-height: 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  container-type: size;
+  padding: 2px;
+}
+
+.dpad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  grid-template-areas:
+    ". up ."
+    "left center right"
+    ". down .";
+  gap: 0.24rem;
+  width: min(calc(100cqw - 2px), calc(100cqh * 1.15), 215px);
+  height: min(calc(100cqh - 2px), calc(100cqw * 0.98), 198px);
+}
+
+.dpad-up    { grid-area: up; }
+.dpad-down  { grid-area: down; }
+.dpad-left  { grid-area: left; }
+.dpad-right { grid-area: right; }
+
+.dpad-center {
+  grid-area: center;
+  height: 74%;
+  aspect-ratio: 1 / 1;
+  max-width: 78%;
+  max-height: 78%;
+  place-self: center;
+  border-radius: 50%;
+  background: radial-gradient(circle, #1e293b 0%, #0b1120 82%);
+  border: 1.5px solid #334155;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.7);
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  pointer-events: none;
+}
+
+.dpad-btn {
+  border-radius: 0.55rem;
+  background: linear-gradient(160deg, #162238 0%, #0b1324 100%);
+  border: 1.5px solid #475569;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  padding: 0.15rem 0.18rem;
+  gap: 0.12rem;
+}
+
+.dpad-btn.btn-arm {
+  border-color: rgba(245, 158, 11, 0.45);
+}
+
+.dpad-btn.dpad-left,
+.dpad-btn.dpad-right {
+  border-color: rgba(56, 189, 248, 0.42);
+}
+
+.dpad-btn span {
+  font-size: 0.56rem;
+  line-height: 1.05;
+  text-align: center;
+  word-break: normal;
+}
+
+.dpad-btn i {
+  font-size: 0.95rem;
+  margin-bottom: 0;
+}
+
+/* Fila / mini-grid compacto de los 4 auxiliares debajo de la cruceta */
+.aux-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: repeat(4, minmax(0, 1fr));
-  gap: 0.28rem;
+  gap: 0.25rem;
+  padding-top: 0.28rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
 }
 
 .btn-control,
 .btn-aux {
   min-height: 0;
   height: 100%;
-  padding: 0.12rem 0.22rem;
+  padding: 0.16rem 0.22rem;
   background-color: #0f172a;
   color: var(--text-light);
   border: 1px solid #475569;
   font-weight: 600;
-  font-size: 0.66rem;
+  font-size: 0.64rem;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  line-height: 1.05;
-  border-radius: 0.4rem;
-  transition: all 0.15s ease;
+  line-height: 1.08;
+  border-radius: 0.45rem;
+  transition: transform 0.1s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
   forced-color-adjust: none;
 }
 
-.btn-control i,
+.btn-aux {
+  min-height: 36px;
+  gap: 0.1rem;
+  background: linear-gradient(180deg, #131f33 0%, #0c1424 100%);
+}
+
 .btn-aux i {
-  font-size: 0.9rem;
-  margin-bottom: 1px;
+  font-size: 0.85rem;
+  margin-bottom: 0;
+}
+
+.btn-aux span {
+  font-size: 0.58rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.btn-control:hover:not(:disabled),
+.btn-aux:hover:not(:disabled) {
+  border-color: #94a3b8;
+  background: linear-gradient(160deg, #1e2e49 0%, #111c30 100%);
+  color: #ffffff;
+}
+
+.btn-control:active:not(:disabled),
+.btn-aux:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.btn-control:disabled,
+.btn-aux:disabled {
+  background: #0b1120;
+  border-color: #334155;
+  color: #94a3b8;
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
 .btn-control.is-sending,
 .btn-aux.is-sending {
   border-color: var(--accent-amber);
-  background-color: rgba(245, 158, 11, 0.22);
+  background: rgba(245, 158, 11, 0.22);
   color: #fde68a;
 }
 
 .btn-control.is-active,
 .btn-aux.is-active {
   border-color: var(--accent-cyan);
-  background-color: rgba(56, 189, 248, 0.28);
+  background: rgba(56, 189, 248, 0.28);
   color: #fff;
   box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
 }
@@ -412,13 +632,13 @@ body.app-viewport {
 .btn-control.is-error,
 .btn-aux.is-error {
   border-color: #ef4444;
-  background-color: rgba(239, 68, 68, 0.25);
+  background: rgba(239, 68, 68, 0.25);
 }
 
 /* Controles de DEMO */
 .demo-controls-row {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.3rem;
   align-items: center;
 }
@@ -472,21 +692,21 @@ body.app-viewport {
 }
 
 .last-move-title {
-  font-size: 0.92rem;
+  font-size: 0.94rem;
   color: #38bdf8 !important;
 }
 
 .last-move-meta {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.15rem 0.4rem;
-  font-size: 0.64rem;
+  gap: 0.18rem 0.45rem;
+  font-size: 0.66rem;
 }
 
 .meta-item {
   display: flex;
   align-items: center;
-  gap: 0.22rem;
+  gap: 0.24rem;
   min-width: 0;
 }
 
@@ -500,7 +720,7 @@ body.app-viewport {
 }
 
 .monitor-disclaimer {
-  font-size: 0.56rem;
+  font-size: 0.58rem;
 }
 
 /* Tabla compacta para que las 10 filas se vean limpias dentro de la tarjeta */
@@ -508,14 +728,15 @@ body.app-viewport {
   flex: 1 1 0%;
   min-height: 0;
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   border: 1px solid var(--border-color);
-  border-radius: 0.38rem;
+  border-radius: 0.42rem;
   background-color: var(--bg-surface);
 }
 
 .monitor-table {
-  font-size: 0.62rem;
+  font-size: 0.64rem;
   width: 100%;
   margin-bottom: 0;
 }
@@ -525,73 +746,219 @@ body.app-viewport {
   top: 0;
   background-color: #0f172a;
   color: var(--text-muted);
-  font-size: 0.56rem;
+  font-size: 0.58rem;
   text-transform: uppercase;
-  padding: 0.22rem 0.35rem;
+  letter-spacing: 0.03em;
+  padding: 0.26rem 0.4rem;
   border-bottom: 1px solid #475569;
+  white-space: nowrap;
   z-index: 1;
 }
 
 .monitor-table tbody td {
-  padding: 0.18rem 0.35rem;
+  padding: 0.22rem 0.4rem;
   border-color: #1e293b;
   vertical-align: middle;
-  line-height: 1.15;
+  line-height: 1.18;
 }
 
 .col-idx {
-  width: 22px;
+  width: 24px;
 }
 
 .footer-credits {
-  font-size: 0.6rem;
+  font-size: 0.62rem;
 }
 
 /* ==========================================================================
-   MODO HORIZONTAL (LANDSCAPE) Y PANTALLAS DE ESCRITORIO
+   MÓVIL HORIZONTAL ULTRACOMPACTO (e.g. 844x390)
    ========================================================================== */
-@media (orientation: landscape), (min-width: 768px) {
+@media (orientation: landscape) and (max-height: 560px) {
+  .app-header {
+    padding: 0.18rem 0.5rem !important;
+  }
+
+  .app-main {
+    padding: 0.2rem 0.5rem !important;
+  }
+
+  .app-footer {
+    padding: 0.12rem 0.5rem !important;
+  }
+
   .header-bar {
-    flex-direction: row;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "brand status"
+      "session session";
+    gap: 0.18rem 0.45rem;
     align-items: center;
-    justify-content: space-between;
-    gap: 0.4rem;
+  }
+
+  .header-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .brand-icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .title-main {
+    font-size: 0.67rem;
   }
 
   .subtitle-main {
     display: none !important;
   }
 
-  .status-grid {
-    flex: 1 1 auto;
-    max-width: 500px;
+  .nav-view-switcher {
+    display: inline-flex;
+    width: auto;
+    flex-shrink: 0;
   }
 
-  /* En horizontal, CONTROL muestra las 3 tarjetas lado a lado */
+  .btn-nav-tab {
+    flex: 0 0 auto;
+    padding: 0.12rem 0.34rem;
+    min-height: 24px;
+    font-size: 0.57rem;
+    gap: 0.18rem;
+  }
+
+  .btn-nav-tab i {
+    font-size: 0.64rem;
+  }
+
+  #btn-refresh-health {
+    min-height: 24px;
+    padding: 0.1rem 0.32rem;
+    font-size: 0.62rem;
+  }
+
+  .status-grid {
+    width: auto;
+    min-width: 268px;
+    gap: 0.18rem;
+  }
+
+  .status-pill {
+    padding: 0.1rem 0.24rem;
+    gap: 0.18rem;
+    font-size: 0.55rem;
+  }
+
+  .status-pill i {
+    font-size: 0.7rem;
+  }
+
+  .status-label {
+    font-size: 0.46rem;
+  }
+
+  /* Telemetría compacta en horizontal para maximizar espacio de mandos */
+  .control-view-layout {
+    gap: 0.22rem;
+  }
+
+  .telemetry-bar {
+    padding: 0.14rem 0.4rem !important;
+  }
+
+  .telemetry-title {
+    font-size: 0.48rem;
+    line-height: 1.05;
+  }
+
+  .telemetry-value {
+    font-size: 0.58rem;
+    line-height: 1.1;
+  }
+
+  /* 3 columnas cómodas: Joystick (izq) | Cruceta + Aux (centro) | DEMO (der) */
   .cockpit-columns {
-    grid-template-columns: 30% 38% 1fr;
+    grid-template-columns: 28% 44% 1fr;
     grid-template-rows: minmax(0, 1fr);
     grid-template-areas: "joystick actions demo";
+    gap: 0.32rem;
+  }
+
+  .control-card {
+    padding: 0.35rem 0.45rem !important;
+    gap: 0.22rem;
+  }
+
+  .dpad-hint-badge {
+    display: none;
   }
 
   .joystick-zone {
-    width: clamp(84px, 32dvh, 145px);
-    height: clamp(84px, 32dvh, 145px);
+    width: min(calc(100cqw - 4px), calc(100cqh - 4px), 156px);
+    height: min(calc(100cqw - 4px), calc(100cqh - 4px), 156px);
   }
 
-  .joystick-knob {
-    width: clamp(32px, 12dvh, 52px);
-    height: clamp(32px, 12dvh, 52px);
+  .btn-stop-priority {
+    min-height: 34px;
+    padding: 0.18rem 0.45rem;
+    font-size: 0.72rem;
+  }
+
+  .dpad-grid {
+    width: min(calc(100cqw - 4px), calc(100cqh * 1.48), 268px);
+    height: min(calc(100cqh - 2px), 172px);
+    gap: 0.22rem;
+  }
+
+  .dpad-btn {
+    flex-direction: row;
+    gap: 0.24rem;
+    padding: 0.1rem 0.22rem;
+  }
+
+  .dpad-btn i {
+    font-size: 0.85rem;
+  }
+
+  .dpad-btn span {
+    font-size: 0.58rem;
+  }
+
+  .aux-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.22rem;
+    padding-top: 0.22rem;
+  }
+
+  .btn-aux {
+    min-height: 34px;
+    padding: 0.12rem 0.15rem;
+  }
+
+  .btn-aux i {
+    font-size: 0.76rem;
+  }
+
+  .btn-aux span {
+    font-size: 0.54rem;
   }
 
   .demo-controls-row {
     grid-template-columns: 1fr;
-    gap: 0.25rem;
+    gap: 0.22rem;
   }
 
   .demo-btn-group {
     display: grid;
     grid-template-columns: 1fr 1fr;
+  }
+
+  .demo-select,
+  .btn-demo {
+    height: 28px;
+    min-height: 28px;
+    font-size: 0.64rem;
   }
 
   .demo-preview {
@@ -602,9 +969,9 @@ body.app-viewport {
 
   /* En horizontal, MONITOREO muestra Último Movimiento a la izquierda y Tabla a la derecha */
   .monitor-grid {
-    grid-template-columns: 34% 1fr;
+    grid-template-columns: 35% 1fr;
     grid-template-rows: minmax(0, 1fr);
-    gap: 0.45rem;
+    gap: 0.4rem;
   }
 
   .last-move-meta {
@@ -612,18 +979,243 @@ body.app-viewport {
   }
 }
 
-@media (min-width: 992px) and (min-height: 600px) {
+/* ==========================================================================
+   TABLET VERTICAL / INTERMEDIO (min-width: 640px y altura > 560px)
+   ========================================================================== */
+@media (min-width: 640px) and (min-height: 561px) {
+  .header-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+  }
+
+  .nav-view-switcher {
+    display: inline-flex;
+    width: auto;
+    flex-shrink: 0;
+  }
+
+  .btn-nav-tab {
+    flex: 0 0 auto;
+    padding: 0.24rem 0.56rem;
+    font-size: 0.66rem;
+  }
+
+  .aux-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* ==========================================================================
+   ESCRITORIO (min-width: 992px y min-height: 561px — e.g. 1366x768)
+   ========================================================================== */
+@media (min-width: 992px) and (min-height: 561px) {
+  .app-header {
+    padding: 0.38rem 0.75rem !important;
+  }
+
+  .app-main {
+    padding: 0.45rem 0.75rem !important;
+  }
+
+  .header-bar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "brand status"
+      "session session";
+    gap: 0.34rem 0.75rem;
+    align-items: center;
+  }
+
+  .header-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+  }
+
+  .brand-icon {
+    width: 26px;
+    height: 26px;
+  }
+
+  .title-main {
+    font-size: 0.92rem;
+  }
+
   .subtitle-main {
     display: block !important;
+    font-size: 0.66rem;
   }
-  .btn-control,
+
+  .btn-nav-tab {
+    padding: 0.28rem 0.72rem;
+    min-height: 31px;
+    font-size: 0.7rem;
+    gap: 0.32rem;
+  }
+
+  .status-grid {
+    min-width: 382px;
+    gap: 0.35rem;
+  }
+
+  .status-pill {
+    padding: 0.22rem 0.5rem;
+    font-size: 0.68rem;
+    gap: 0.32rem;
+  }
+
+  .status-label {
+    font-size: 0.55rem;
+  }
+
+  /* CONTROL simétrico en escritorio: Joystick (50%) | Cruceta+Aux (50%) y DEMO integrada abajo */
+  .control-view-layout {
+    gap: 0.5rem;
+  }
+
+  .telemetry-bar {
+    padding: 0.35rem 0.65rem !important;
+  }
+
+  .telemetry-title {
+    font-size: 0.58rem;
+  }
+
+  .telemetry-value {
+    font-size: 0.72rem;
+  }
+
+  .cockpit-columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "joystick actions"
+      "demo demo";
+    gap: 0.55rem;
+  }
+
+  .control-card {
+    padding: 0.65rem 0.85rem !important;
+    gap: 0.45rem;
+  }
+
+  .card-heading {
+    font-size: 0.76rem;
+    letter-spacing: 0.3px;
+  }
+
+  .joystick-zone {
+    width: min(calc(100cqw - 12px), calc(100cqh - 12px), 232px);
+    height: min(calc(100cqw - 12px), calc(100cqh - 12px), 232px);
+  }
+
+  .btn-stop-priority {
+    min-height: 44px;
+    font-size: 0.86rem;
+  }
+
+  .dpad-grid {
+    width: min(calc(100cqw - 12px), calc(100cqh * 1.18), 320px);
+    height: min(calc(100cqh - 8px), calc(100cqw * 0.92), 268px);
+    gap: 0.45rem;
+  }
+
+  .dpad-btn {
+    border-radius: 0.68rem;
+    padding: 0.25rem 0.35rem;
+    gap: 0.2rem;
+  }
+
+  .dpad-btn i {
+    font-size: 1.25rem;
+  }
+
+  .dpad-btn span {
+    font-size: 0.74rem;
+  }
+
+  .dpad-center {
+    font-size: 1.2rem;
+  }
+
+  .aux-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.45rem;
+    padding-top: 0.45rem;
+  }
+
   .btn-aux {
-    font-size: 0.78rem;
+    min-height: 44px;
+    flex-direction: row;
+    gap: 0.38rem;
+    padding: 0.25rem 0.45rem;
   }
-  .monitor-table {
+
+  .btn-aux i {
+    font-size: 1rem;
+  }
+
+  .btn-aux span {
     font-size: 0.76rem;
   }
+
+  .card-demo .demo-controls-row {
+    grid-template-columns: minmax(280px, 1fr) auto;
+    gap: 0.5rem;
+  }
+
+  .demo-select,
+  .btn-demo {
+    height: 34px;
+    min-height: 34px;
+    font-size: 0.78rem;
+    padding: 0.2rem 0.65rem;
+  }
+
+  .demo-preview {
+    height: 40px;
+    font-size: 0.72rem;
+    display: flex;
+    align-items: center;
+  }
+
+  /* MONITOREO en escritorio */
+  .monitor-grid {
+    grid-template-columns: 35% 1fr;
+    grid-template-rows: minmax(0, 1fr);
+    gap: 0.6rem;
+  }
+
+  .last-move-hero {
+    padding: 1rem !important;
+  }
+
+  .last-move-title {
+    font-size: 1.18rem;
+    margin: 0.35rem 0;
+  }
+
+  .last-move-meta {
+    grid-template-columns: 1fr;
+    gap: 0.38rem;
+    font-size: 0.78rem;
+  }
+
+  .monitor-disclaimer {
+    font-size: 0.66rem;
+  }
+
+  .monitor-table {
+    font-size: 0.78rem;
+  }
+
+  .monitor-table thead th {
+    font-size: 0.68rem;
+    padding: 0.42rem 0.6rem;
+  }
+
   .monitor-table tbody td {
-    padding: 0.35rem 0.55rem;
+    padding: 0.4rem 0.6rem;
   }
 }

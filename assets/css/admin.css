@@ -1,61 +1,106 @@
-﻿/* ============================================================================
-   Estilos Modulares para ADMINISTRACIÓN, Roles, Editor de Demos y Catálogo
+/* ============================================================================
+   Estilos Modulares para ADMINISTRACIÓN, Roles, Editor de Demos y Catálogo (v21)
    Conserva intacto el layout fijo 100dvh de CONTROL y MONITOREO (styles.css)
    ============================================================================ */
 
+/* Barra de sesión y unidad activa (ubicada en área Grid "session") */
 .session-strip {
+  grid-area: session;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.4rem;
-  flex-wrap: wrap;
-  padding: 0.2rem 0.45rem;
-  margin-top: 0.25rem;
-  margin-bottom: 0.25rem;
-  background: rgba(15, 23, 42, 0.75);
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  border-radius: 0.5rem;
+  gap: 0.35rem 0.6rem;
+  flex-wrap: nowrap;
+  padding: 0.22rem 0.55rem;
+  margin: 0;
+  background: rgba(15, 23, 42, 0.82);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 0.45rem;
+  min-width: 0;
+}
+
+.session-user-group {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.session-user-group #header-user-name {
+  font-size: 0.76rem;
+  min-width: 0;
+}
+
+.session-actions-group {
+  flex-shrink: 0;
+  min-width: 0;
 }
 
 .session-vehicle-select {
-  max-width: 190px;
-  font-size: 0.72rem;
-  padding-top: 0.1rem;
-  padding-bottom: 0.1rem;
+  max-width: 280px;
+  min-width: 140px;
+  font-size: 0.74rem;
+  height: 28px;
+  padding: 0.1rem 1.8rem 0.1rem 0.5rem;
 }
 
+/* Contenedor desplazable exclusivo de ADMINISTRACIÓN */
 .admin-view-scroll {
   overflow-y: auto;
   overflow-x: hidden;
-  padding-top: 0.35rem;
-  padding-bottom: 0.5rem;
+  padding: 0.45rem 0.2rem 0.75rem;
   -webkit-overflow-scrolling: touch;
 }
 
+/* Previene desbordamiento horizontal por márgenes negativos de .row de Bootstrap */
+.admin-view-scroll > .row,
+.admin-view-scroll .admin-subpane > .row {
+  --bs-gutter-x: 0.85rem;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.admin-view-scroll > .row > [class*="col-"],
+.admin-view-scroll .admin-subpane > .row > [class*="col-"] {
+  padding-left: calc(var(--bs-gutter-x) * 0.5);
+  padding-right: calc(var(--bs-gutter-x) * 0.5);
+}
+
 .admin-card {
-  background: rgba(15, 23, 42, 0.88);
-  border: 1px solid rgba(148, 163, 184, 0.24);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
-}
-
-.metric-tile {
-  background: rgba(30, 41, 59, 0.85);
+  background: linear-gradient(180deg, rgba(19, 30, 50, 0.94) 0%, rgba(15, 23, 42, 0.92) 100%);
   border: 1px solid rgba(148, 163, 184, 0.22);
-  border-radius: 0.6rem;
-  padding: 0.65rem 0.75rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
 }
 
-.metric-value {
-  font-size: 1.35rem;
-  font-weight: 800;
-  line-height: 1.1;
+/* Sub-navegación uniforme de Administración */
+.admin-subnav {
+  background: rgba(11, 17, 32, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 0.55rem;
+  padding: 0.35rem;
+  gap: 0.35rem !important;
 }
 
-.metric-label {
-  font-size: 0.72rem;
-  color: #94a3b8;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+.admin-subtab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border-radius: 0.42rem;
+  padding: 0.34rem 0.72rem;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.admin-subtab.btn-outline-secondary {
+  color: #cbd5e1;
+  border-color: rgba(148, 163, 184, 0.45);
+}
+
+.admin-subtab.btn-outline-secondary:hover {
+  background-color: rgba(148, 163, 184, 0.18);
+  color: #ffffff;
+  border-color: #94a3b8;
 }
 
 .admin-subtab.active {
@@ -63,13 +108,113 @@
   color: #0f172a !important;
   border-color: #f59e0b !important;
   font-weight: 700;
+  box-shadow: 0 2px 10px rgba(245, 158, 11, 0.32);
+}
+
+/* Tarjetas de métricas del Dashboard */
+.metric-tile {
+  background: linear-gradient(165deg, rgba(30, 41, 59, 0.92) 0%, rgba(15, 23, 42, 0.92) 100%);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-top: 2px solid rgba(56, 189, 248, 0.38);
+  border-radius: 0.6rem;
+  padding: 0.8rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.25rem;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.22);
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.metric-tile:hover {
+  border-color: rgba(245, 158, 11, 0.45);
+}
+
+.metric-value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.metric-label {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+/* Filtros uniformes en Auditoría y Unidades */
+.admin-filter-bar {
+  background: rgba(11, 17, 32, 0.65);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 0.5rem;
+  padding: 0.55rem 0.4rem;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.admin-filter-bar .form-control-sm,
+.admin-filter-bar .form-select-sm,
+.admin-filter-bar .btn-sm {
+  min-height: 34px;
+}
+
+.unidades-filter-group {
+  flex: 1 1 260px;
+  justify-content: flex-end;
+}
+
+.unidades-filter-group .form-control-sm {
+  flex: 1 1 155px;
+  min-width: 130px;
+  max-width: 220px;
+}
+
+.unidades-filter-group .form-select-sm {
+  flex: 0 1 165px;
+  min-width: 135px;
+}
+
+/* Tablas con scroll horizontal limpio y encabezado destacado */
+.admin-card .table-responsive {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 0.48rem;
+  background-color: rgba(11, 17, 32, 0.72);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.admin-card .table {
+  margin-bottom: 0;
+  min-width: 520px;
+}
+
+.admin-card .table thead th {
+  background-color: rgba(15, 23, 42, 0.95);
+  color: #94a3b8;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+  white-space: nowrap;
+}
+
+.admin-card .table tbody td {
+  padding: 0.48rem 0.6rem;
+  border-color: rgba(51, 65, 85, 0.55);
+  vertical-align: middle;
 }
 
 .demo-step-row {
   background: rgba(30, 41, 59, 0.72);
   border: 1px solid rgba(148, 163, 184, 0.22);
   border-radius: 0.5rem;
-  padding: 0.5rem;
+  padding: 0.55rem;
+  margin-left: 0;
+  margin-right: 0;
 }
 
 .vehicle-card-active {
@@ -85,20 +230,151 @@ textarea:focus-visible {
   outline-offset: 1px;
 }
 
-@media (max-width: 576px) {
-  .nav-view-switcher .btn-nav-tab span {
-    font-size: 0.64rem;
-  }
-  .session-vehicle-select {
-    max-width: 145px;
-  }
+/* Corrige el recuadro blanco del iframe de Google en modo oscuro sin recortar el botón */
+#google-signin-btn {
+  color-scheme: light !important;
+  background: transparent !important;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* Corrige el recuadro blanco del iframe de Google en modo oscuro */
-#google-signin-btn,
 #google-signin-btn iframe {
   color-scheme: light !important;
   background: transparent !important;
   border-radius: 999px;
-  overflow: hidden;
+}
+
+/* ==========================================================================
+   AJUSTES RESPONSIVOS PARA MÓVIL HORIZONTAL (e.g. 844x390)
+   ========================================================================== */
+@media (orientation: landscape) and (max-height: 560px) {
+  .session-strip {
+    padding: 0.1rem 0.45rem;
+    gap: 0.4rem;
+    min-height: 26px;
+  }
+
+  .session-user-group #header-user-name {
+    font-size: 0.68rem;
+  }
+
+  .session-vehicle-select {
+    max-width: 230px;
+    height: 24px;
+    font-size: 0.66rem;
+    padding: 0.05rem 1.6rem 0.05rem 0.4rem;
+  }
+
+  .session-strip .btn-xs {
+    min-height: 22px;
+    padding: 0.08rem 0.4rem;
+    font-size: 0.64rem;
+  }
+}
+
+/* ==========================================================================
+   AJUSTES RESPONSIVOS PARA MÓVIL VERTICAL (e.g. 390x844 y 360x740)
+   ========================================================================== */
+@media (max-width: 576px) {
+  .session-strip {
+    flex-wrap: wrap;
+    padding: 0.2rem 0.42rem;
+    gap: 0.26rem 0.4rem;
+  }
+
+  .session-user-group {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .session-user-group #header-user-name {
+    font-size: 0.7rem;
+  }
+
+  .session-actions-group {
+    flex: 0 1 auto;
+    max-width: 100%;
+  }
+
+  /* Cuando hay selector de unidad visible, permitir distribución limpia */
+  .session-strip:has(.session-vehicle-select:not(.d-none)) .session-user-group {
+    flex-basis: 100%;
+  }
+
+  .session-strip:has(.session-vehicle-select:not(.d-none)) .session-actions-group {
+    width: 100%;
+    margin-left: 0 !important;
+  }
+
+  .session-vehicle-select {
+    flex: 1 1 auto;
+    max-width: none;
+    min-width: 0;
+    height: 28px;
+    font-size: 0.7rem;
+  }
+
+  /* Sub-pestañas ordenadas en móvil vertical */
+  .admin-subnav {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.3rem !important;
+  }
+
+  .admin-subtab {
+    font-size: 0.66rem;
+    padding: 0.34rem 0.32rem;
+    min-height: 36px;
+    width: 100%;
+    gap: 0.22rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .admin-subtab i {
+    margin-right: 0 !important;
+    flex-shrink: 0;
+  }
+
+  .admin-subtab:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+
+  /* Formularios cómodos para pantalla táctil en móvil */
+  .admin-view-scroll .form-control-sm,
+  .admin-view-scroll .form-select-sm {
+    min-height: 38px;
+    font-size: 0.84rem;
+    padding: 0.35rem 0.6rem;
+  }
+
+  .admin-view-scroll .btn-sm {
+    min-height: 38px;
+    font-size: 0.82rem;
+  }
+
+  .unidades-filter-group {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .unidades-filter-group .form-control-sm,
+  .unidades-filter-group .form-select-sm {
+    flex: 1 1 100%;
+    max-width: none;
+  }
+
+  .metric-tile {
+    padding: 0.65rem 0.72rem;
+  }
+
+  .metric-value {
+    font-size: 1.32rem;
+  }
+
+  .metric-label {
+    font-size: 0.64rem;
+  }
 }
