@@ -168,12 +168,25 @@ class WsClient {
       return;
     }
 
+    const evento = String(payload.evento || "EVENTO").trim().toUpperCase();
     const activeId = Number(this.currentVehicleId || sessionStore.getActiveVehicleId());
-    if (payload.id_vehiculo && activeId && Number(payload.id_vehiculo) !== activeId) {
+
+    if (evento === "SOPORTE_REVOCADO") {
+      const targetId = Number(payload.id_vehiculo || activeId || 0);
+      uiState.markWsEventReceived(`SOPORTE_REVOCADO (Vehículo #${targetId || "—"})`);
+      if (
+        sessionStore.getRole() === "ADMIN" &&
+        (!targetId || Number(this.currentVehicleId) === targetId)
+      ) {
+        this.disconnect();
+      }
+      this.eventListeners.forEach((cb) => cb(payload));
       return;
     }
 
-    const evento = String(payload.evento || "EVENTO").trim().toUpperCase();
+    if (payload.id_vehiculo && activeId && Number(payload.id_vehiculo) !== activeId) {
+      return;
+    }
 
     if (evento === "ESTADO_ACTUAL") {
       uiState.markWsEventReceived(`ESTADO_ACTUAL (Vehículo #${payload.id_vehiculo || activeId})`);

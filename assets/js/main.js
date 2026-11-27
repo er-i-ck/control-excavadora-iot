@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Punto de Entrada Integrado: CONTROL + MONITOREO + ADMINISTRACIÓN (main.js - v20)
  */
 
@@ -18,6 +18,8 @@ class AppInitializer {
   constructor() {
     this.healthTimer = null;
     this.joystick = null;
+    this._supportRevokeInFlight = null;
+    this._lastSupportRevoke = { id: null, ts: 0 };
   }
 
   async start() {
@@ -28,7 +30,35 @@ class AppInitializer {
       onSessionReady: () => this.onSessionAuthenticated(),
       onVehicleSelected: (id) => this.selectActiveVehicle(id),
       onDemosUpdated: () => demoController.cargarCatalogoDemos(),
-      onLogout: (skipRemote) => this.handleLogout(skipRemote)
+      onLogout: (skipRemote) => this.handleLogout(skipRemote),
+      onSupportRevoked: (info) => this.handleSupportRevoked(info)
+    });
+
+    sessionStore.onChange((reason) => {
+      if (reason === "vehicles") {
+        this._renderHeaderVehicleSelector();
+      }
+    });
+
+    wsClient.onMessage((payload) => {
+      const evento = String(payload?.evento || "").trim().toUpperCase();
+      if (evento === "SOPORTE_REVOCADO" && sessionStore.getRole() === "ADMIN") {
+        this.handleSupportRevoked({
+          idVehiculo: payload.id_vehiculo ? Number(payload.id_vehiculo) : null,
+          mensaje: payload.mensaje || "El Modo Soporte de esta unidad fue revocado.",
+          feedbackType: payload.cerrado_por_rol === "ADMIN" ? "info" : "warning",
+          forceSync: false
+        });
+      }
+    });
+
+    movementController.onSupportRevoked(({ idVehiculo, mensaje }) => {
+      this.handleSupportRevoked({
+        idVehiculo,
+        mensaje: mensaje || "El Modo Soporte de esta unidad fue revocado o expiró.",
+        feedbackType: "warning",
+        forceSync: true
+      });
     });
 
     apiClient.onUnauthorized((msg) => {
@@ -162,6 +192,105 @@ class AppInitializer {
       if (subEl) subEl.textContent = "Sin unidad operativa seleccionada";
       wsClient.disconnect();
       uiState.applyAllowedCommands([], false);
+      await Promise.allSettled([
+        monitorController.sincronizarTodoPorRest(false),
+        demoController.cargarCatalogoDemos()
+      ]);
+    }
+  }
+
+  async handleSupportRevoked({
+    idVehiculo = null,
+    mensaje = null,
+    feedbackType = "warning",
+    forceSync = false
+  } = {}) {
+    if (!sessionStore.isAuthenticated() || sessionStore.getRole() !== "ADMIN") {
+      return;
+    }
+
+    const prevActiveId = Number(sessionStore.getActiveVehicleId() || 0);
+    const targetId = idVehiculo ? Number(idVehiculo) : prevActiveId;
+    const wasActive = Boolean(targetId && prevActiveId === targetId);
+    const wasInList = Boolean(
+      targetId && sessionStore.getVehicles().some((v) => Number(v.id_vehiculo) === targetId)
+    );
+
+    if (!forceSync && !wasActive && !wasInList) {
+      return;
+    }
+
+    const aviso = mensaje || "El Modo Soporte de esta unidad ha finalizado.";
+
+    if (this._supportRevokeInFlight) {
+      await this._supportRevokeInFlight;
+      if (!forceSync) return;
+      const stillInStore = targetId && sessionStore.getVehicles().some((v) => Number(v.id_vehiculo) === targetId);
+      if (!stillInStore) {
+        adminController.showFeedback(aviso, feedbackType);
+        return;
+      }
+    }
+
+    if (!forceSync && this._lastSupportRevoke.id === targetId && Date.now() - this._lastSupportRevoke.ts < 1500) {
+      return;
+    }
+
+    this._lastSupportRevoke = { id: targetId, ts: Date.now() };
+
+    const run = async () => {
+      if (wasActive || (targetId && Number(wsClient.currentVehicleId) === targetId)) {
+        wsClient.disconnect();
+        uiState.clearAllButtonStates();
+        uiState.setJoystickLabel("Centro · Neutro", false);
+      }
+
+      let nuevaLista = null;
+      try {
+        nuevaLista = await apiClient.obtenerMisVehiculos();
+      } catch {
+        nuevaLista = sessionStore
+          .getVehicles()
+          .filter((v) => !targetId || Number(v.id_vehiculo) !== targetId);
+      }
+
+      sessionStore.setVehicles(nuevaLista);
+      this._renderHeaderVehicleSelector();
+
+      const stillAvailable = targetId
+        ? nuevaLista.some((v) => Number(v.id_vehiculo) === targetId)
+        : false;
+      const newActiveId = Number(sessionStore.getActiveVehicleId() || 0);
+
+      if (!stillAvailable || newActiveId !== prevActiveId) {
+        await this._syncActiveVehicleContext();
+
+        if (navigation.currentView === "control") {
+          navigation.switchView("admin");
+          document.querySelectorAll(".admin-subtab").forEach((btn) => {
+            btn.classList.toggle("active", btn.dataset.subtab === "mis-vehiculos");
+          });
+          document.querySelectorAll(".admin-subpane").forEach((pane) => {
+            pane.classList.toggle("d-none", pane.id !== "subtab-mis-vehiculos");
+          });
+          adminController.currentSubtab = "mis-vehiculos";
+          adminController.renderMisVehiculos();
+        } else if (navigation.currentView === "admin" && adminController.currentSubtab === "mis-vehiculos") {
+          adminController.renderMisVehiculos();
+        }
+      }
+
+      adminController.showFeedback(aviso, feedbackType);
+      if (navigation.currentView !== "admin") {
+        uiState.showAlert(aviso);
+      }
+    };
+
+    this._supportRevokeInFlight = run();
+    try {
+      await this._supportRevokeInFlight;
+    } finally {
+      this._supportRevokeInFlight = null;
     }
   }
 

@@ -26,13 +26,15 @@ class AdminController {
     this.onVehicleSelectedCallback = null;
     this.onDemosUpdatedCallback = null;
     this.onLogoutCallback = null;
+    this.onSupportRevokedCallback = null;
   }
 
-  configureCallbacks({ onSessionReady, onVehicleSelected, onDemosUpdated, onLogout }) {
+  configureCallbacks({ onSessionReady, onVehicleSelected, onDemosUpdated, onLogout, onSupportRevoked }) {
     this.onSessionReadyCallback = onSessionReady;
     this.onVehicleSelectedCallback = onVehicleSelected;
     this.onDemosUpdatedCallback = onDemosUpdated;
     this.onLogoutCallback = onLogout;
+    this.onSupportRevokedCallback = onSupportRevoked || null;
   }
 
   init() {
@@ -993,8 +995,17 @@ class AdminController {
     try {
       const res = await apiClient.configurarSoporteVehiculo(idVehiculo, activar, 30);
       const mensaje = res?.mensaje || (activar ? "Modo Soporte activado por 30 minutos." : "Modo Soporte finalizado.");
-      this.showFeedback(mensaje, activar ? "warning" : "success");
-      await this.recargarMisVehiculos();
+      if (!activar && sessionStore.getRole() === "ADMIN" && this.onSupportRevokedCallback) {
+        await this.onSupportRevokedCallback({
+          idVehiculo: Number(idVehiculo),
+          mensaje,
+          feedbackType: "success",
+          forceSync: true
+        });
+      } else {
+        this.showFeedback(mensaje, activar ? "warning" : "success");
+        await this.recargarMisVehiculos();
+      }
     } catch (error) {
       this.showFeedback(error.message || "No se pudo actualizar el estado de soporte.", "danger");
     }

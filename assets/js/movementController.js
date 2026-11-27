@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Controlador de Movimientos (movementController.js - v20)
  */
 
@@ -20,6 +20,7 @@ class MovementController {
     this.lastSentTimestamp = 0;
     this.requestSequence = 0;
     this.onEmergencyStopCallback = null;
+    this.onSupportRevokedCallback = null;
   }
 
   get isDemoRunning() {
@@ -32,6 +33,17 @@ class MovementController {
 
   onEmergencyStop(callback) {
     this.onEmergencyStopCallback = callback;
+  }
+
+  onSupportRevoked(callback) {
+    this.onSupportRevokedCallback = callback;
+  }
+
+  _isAdminSupportRevokedError(error) {
+    if (sessionStore.getRole() !== "ADMIN") return false;
+    if (Number(error?.status) !== 403) return false;
+    const msg = String(error?.message || error?.data?.detail || "");
+    return /soporte/i.test(msg);
   }
 
   async executeCommand(commandKey, options = { fromJoystick: false, force: false }) {
@@ -111,6 +123,16 @@ class MovementController {
 
       return true;
     } catch (error) {
+      if (this._isAdminSupportRevokedError(error)) {
+        this.activeCommandKey = null;
+        uiState.clearAllButtonStates();
+        uiState.setJoystickLabel("Centro · Neutro", false);
+        this.onSupportRevokedCallback?.({
+          idVehiculo,
+          mensaje: error.message || "El Modo Soporte de esta unidad fue revocado o expiró."
+        });
+        return false;
+      }
       if (currentSeq === this.requestSequence) {
         uiState.setButtonState(commandKey, "error");
         uiState.showAlert(`No se pudo enviar ${cmdInfo.etiqueta}: ${error.message}`);
@@ -147,6 +169,16 @@ class MovementController {
       }
       return true;
     } catch (error) {
+      if (this._isAdminSupportRevokedError(error)) {
+        this.activeCommandKey = null;
+        uiState.clearAllButtonStates();
+        uiState.setJoystickLabel("Centro · Neutro", false);
+        this.onSupportRevokedCallback?.({
+          idVehiculo,
+          mensaje: error.message || "El Modo Soporte de esta unidad fue revocado o expiró."
+        });
+        return false;
+      }
       uiState.setButtonState("PARAR", "error");
       uiState.showAlert(`Error al enviar paro prioritario: ${error.message}`);
       return false;
