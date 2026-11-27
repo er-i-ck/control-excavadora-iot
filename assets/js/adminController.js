@@ -1,12 +1,12 @@
-﻿/**
+/**
  * Controlador de Administración, Roles, Mis Vehículos, Editor de DEMOs, Movimientos e Invitados (v20)
  */
 
-import { CONFIG, obtenerIconoVehiculo } from "./config.js?v=20";
-import { apiClient } from "./apiClient.js?v=20";
-import { sessionStore } from "./sessionStore.js?v=20";
-import { navigation } from "./navigation.js?v=20";
-import { formatearFechaHora } from "./dateUtils.js?v=20";
+import { CONFIG, obtenerIconoVehiculo } from "./config.js?v=21";
+import { apiClient } from "./apiClient.js?v=21";
+import { sessionStore } from "./sessionStore.js?v=21";
+import { navigation } from "./navigation.js?v=21";
+import { formatearFechaHora } from "./dateUtils.js?v=21";
 
 const COMANDOS_CATALOGO_LISTA = Object.values(CONFIG.COMANDOS).sort((a, b) => a.codigo - b.codigo);
 
@@ -107,7 +107,7 @@ class AdminController {
     });
 
     this._initGoogleSignIn();
-    document.getElementById("btn-reload-mis-vehiculos")?.addEventListener("click", () => this.renderMisVehiculos());
+    document.getElementById("btn-reload-mis-vehiculos")?.addEventListener("click", () => this.recargarMisVehiculos());
 
     document.getElementById("form-modelo")?.addEventListener("submit", (e) => {
       e.preventDefault();
@@ -213,7 +213,7 @@ class AdminController {
     } else if (target === "clientes") {
       await Promise.all([this.cargarClientes(), this.cargarUnidades(true)]);
     } else if (target === "mis-vehiculos") {
-      this.renderMisVehiculos();
+      await this.recargarMisVehiculos();
     } else if (target === "editor-demos") {
       await this.prepararEditorDemos();
     } else if (target === "movimientos") {
@@ -875,15 +875,21 @@ class AdminController {
     }
   }
 
+  async recargarMisVehiculos() {
+    await this._refrescarListaMisVehiculos();
+    this.renderMisVehiculos();
+  }
+
   renderMisVehiculos() {
     const grid = document.getElementById("mis-vehiculos-grid");
     if (!grid) return;
     const vehs = sessionStore.getVehicles();
     const activeId = Number(sessionStore.getActiveVehicleId());
+    const rol = sessionStore.getRole();
 
     if (!vehs.length) {
       grid.innerHTML = `<div class="col-12"><div class="admin-card p-3 rounded-3 text-secondary small">
-        No tienes unidades operables asignadas en este momento. ${sessionStore.getRole() === "ADMIN" ? "(Las unidades vendidas a compradores están protegidas contra operación directa del administrador)." : ""}
+        No tienes unidades operables asignadas en este momento. ${rol === "ADMIN" ? "(Las unidades vendidas a compradores están protegidas contra operación directa y aparecerán aquí automáticamente cuando un cliente active el Modo Soporte)." : ""}
       </div></div>`;
       return;
     }
@@ -892,16 +898,53 @@ class AdminController {
       .map((v) => {
         const isCurrent = Number(v.id_vehiculo) === activeId;
         const cmds = (v.comandos_permitidos || []).length;
+        const soporteActivo = Boolean(Number(v.soporte_vigente ?? v.soporte_activo ?? 0));
+        const horaExp = v.soporte_expira_en ? formatearFechaHora(v.soporte_expira_en, "").hora : "";
+
+        let soporteInfoHtml = "";
+        if (soporteActivo) {
+          const expSuffix = horaExp && horaExp !== "—" ? ` · Expira: ${this._esc(horaExp)}` : "";
+          const textoSoporte = rol === "ADMIN"
+            ? `Soporte solicitado por: ${this._esc(v.propietario_nombre || "Cliente")}${expSuffix}`
+            : `Soporte activo (Admin autorizado)${expSuffix}`;
+          soporteInfoHtml = `
+            <div class="small text-danger fw-semibold mb-2">
+              <i class="bi bi-headset me-1" aria-hidden="true"></i>${textoSoporte}
+            </div>`;
+        }
+
+        let soporteBtnHtml = "";
+        if (rol === "USUARIO" && !soporteActivo) {
+          soporteBtnHtml = `
+            <button type="button" class="btn btn-sm btn-outline-danger" data-toggle-soporte="${v.id_vehiculo}" data-activar="1">
+              <i class="bi bi-headset me-1" aria-hidden="true"></i>Solicitar Soporte
+            </button>`;
+        } else if (rol === "USUARIO" && soporteActivo) {
+          soporteBtnHtml = `
+            <button type="button" class="btn btn-sm btn-danger" data-toggle-soporte="${v.id_vehiculo}" data-activar="0">
+              <i class="bi bi-shield-x me-1" aria-hidden="true"></i>Revocar Soporte
+            </button>`;
+        } else if (rol === "ADMIN" && soporteActivo) {
+          soporteBtnHtml = `
+            <button type="button" class="btn btn-sm btn-outline-danger" data-toggle-soporte="${v.id_vehiculo}" data-activar="0">
+              <i class="bi bi-check2-circle me-1" aria-hidden="true"></i>Finalizar Soporte
+            </button>`;
+        }
+
         return `
         <div class="col-12 col-md-6">
-          <div class="admin-card p-3 rounded-3 h-100 ${isCurrent ? "vehicle-card-active" : ""}">
+          <div class="admin-card p-3 rounded-3 h-100 ${isCurrent ? "vehicle-card-active" : ""} ${soporteActivo ? "border-danger" : ""}">
             <div class="d-flex justify-content-between align-items-center mb-1">
               <strong class="text-warning">${obtenerIconoVehiculo(v.nombre, v.modelo_nombre)}${this._esc(v.nombre)}</strong>
-              <span class="badge ${isCurrent ? "bg-warning text-dark" : "bg-secondary"} badge-xs">${isCurrent ? "ACTIVA" : v.estado_operativo}</span>
+              <div class="d-flex align-items-center">
+                ${soporteActivo ? '<span class="badge bg-danger badge-xs me-1">SOPORTE</span>' : ""}
+                <span class="badge ${isCurrent ? "bg-warning text-dark" : "bg-secondary"} badge-xs">${isCurrent ? "ACTIVA" : this._esc(v.estado_operativo)}</span>
+              </div>
             </div>
             <div class="small text-secondary mb-2">
               ID #${v.id_vehiculo} · Serie: <span class="text-info">${this._esc(v.codigo_serie)}</span> · Modelo: ${this._esc(v.modelo_nombre || "Estándar")} · ${cmds} comandos soportados
             </div>
+            ${soporteInfoHtml}
             <div class="d-flex flex-wrap gap-2">
               <button type="button" class="btn btn-sm btn-warning text-dark fw-bold" data-select-go="${v.id_vehiculo}" data-dest="control">
                 <i class="bi bi-controller me-1"></i>Controlar
@@ -912,6 +955,7 @@ class AdminController {
               <button type="button" class="btn btn-sm btn-outline-light" data-select-go="${v.id_vehiculo}" data-dest="demos">
                 <i class="bi bi-sliders me-1"></i>DEMOs
               </button>
+              ${soporteBtnHtml}
             </div>
           </div>
         </div>`;
@@ -930,6 +974,30 @@ class AdminController {
         }
       });
     });
+
+    grid.querySelectorAll("[data-toggle-soporte]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const idVehiculo = Number(btn.dataset.toggleSoporte);
+        const activar = btn.dataset.activar === "1";
+        this._toggleSoporteVehiculo(idVehiculo, activar);
+      });
+    });
+  }
+
+  async _toggleSoporteVehiculo(idVehiculo, activar) {
+    if (activar) {
+      const confirmado = window.confirm("¿Autorizar al administrador para controlar temporalmente este vehículo por 30 minutos?");
+      if (!confirmado) return;
+    }
+
+    try {
+      const res = await apiClient.configurarSoporteVehiculo(idVehiculo, activar, 30);
+      const mensaje = res?.mensaje || (activar ? "Modo Soporte activado por 30 minutos." : "Modo Soporte finalizado.");
+      this.showFeedback(mensaje, activar ? "warning" : "success");
+      await this.recargarMisVehiculos();
+    } catch (error) {
+      this.showFeedback(error.message || "No se pudo actualizar el estado de soporte.", "danger");
+    }
   }
 
   async prepararEditorDemos() {
@@ -1176,9 +1244,18 @@ class AdminController {
 
     this._resetFormComando();
 
-    const vehs = sessionStore.getRole() === "ADMIN"
-      ? (await apiClient.obtenerUnidadesAdmin()).filter((u) => u.activo)
-      : sessionStore.getVehicles();
+    let vehs = [];
+    try {
+      vehs = sessionStore.getRole() === "ADMIN"
+        ? (await apiClient.obtenerUnidadesAdmin()).filter((u) => u.activo)
+        : sessionStore.getVehicles();
+    } catch (err) {
+      selVeh.innerHTML = '<option value="">Error al cargar unidades</option>';
+      const tbody = document.getElementById("comandos-tbody");
+      if (tbody) tbody.innerHTML = `<tr><td colspan="4" class="text-danger text-center py-3">${this._esc(err.message)}</td></tr>`;
+      this.showFeedback(`No se pudieron cargar las unidades: ${err.message}`, "danger");
+      return;
+    }
 
     if (!vehs.length) {
       selVeh.innerHTML = '<option value="">Sin unidades disponibles</option>';
@@ -1211,21 +1288,24 @@ class AdminController {
       }
 
       tbody.innerHTML = this.comandosCache
-        .map((c) => `
+        .map((c) => {
+          const nombreEsc = this._esc(c.nombre);
+          return `
           <tr>
             <td><span class="badge bg-secondary">${c.codigo}</span></td>
-            <td class="fw-semibold text-light">${this._esc(c.nombre)}</td>
+            <td class="fw-semibold text-light">${nombreEsc}</td>
             <td class="text-secondary">${this._esc(c.descripcion || "—")}</td>
             <td class="text-end text-nowrap">
-              <button type="button" class="btn btn-xs btn-outline-info me-1 btn-edit-cmd" data-id="${c.id_comando}">
+              <button type="button" class="btn btn-xs btn-outline-info me-1 btn-edit-cmd" data-id="${c.id_comando}" title="Editar ${nombreEsc}" aria-label="Editar movimiento ${nombreEsc}">
                 <i class="bi bi-pencil" aria-hidden="true"></i>
               </button>
-              <button type="button" class="btn btn-xs btn-outline-danger btn-del-cmd" data-id="${c.id_comando}">
+              <button type="button" class="btn btn-xs btn-outline-danger btn-del-cmd" data-id="${c.id_comando}" title="Desactivar ${nombreEsc}" aria-label="Desactivar movimiento ${nombreEsc}">
                 <i class="bi bi-trash" aria-hidden="true"></i>
               </button>
             </td>
           </tr>
-        `)
+        `;
+        })
         .join("");
 
       tbody.querySelectorAll(".btn-edit-cmd").forEach((btn) => {

@@ -1,10 +1,10 @@
-﻿/**
+/**
  * Módulo Cliente REST Compartido (apiClient.js - v20)
  * Adjunta Bearer Token automáticamente y consume rutas 4.1, 4.2 y 4.3.
  */
 
-import { CONFIG } from "./config.js?v=20";
-import { sessionStore } from "./sessionStore.js?v=20";
+import { CONFIG } from "./config.js?v=21";
+import { sessionStore } from "./sessionStore.js?v=21";
 
 class ApiClient {
   constructor() {
@@ -136,6 +136,17 @@ class ApiClient {
   async obtenerMisVehiculos() {
     const res = await this.request(CONFIG.ENDPOINTS.MIS_VEHICULOS, { method: "GET" });
     return Array.isArray(res.data) ? res.data : [];
+  }
+
+  async configurarSoporteVehiculo(idVehiculo, activar, minutos = 30) {
+    const res = await this.request(CONFIG.ENDPOINTS.VEHICULO_SOPORTE(idVehiculo), {
+      method: "POST",
+      body: JSON.stringify({
+        activar: Boolean(activar),
+        minutos: Number(minutos)
+      })
+    });
+    return res.data;
   }
 
   // ===== CONTROL Y MONITOREO (4.1 / 4.2) =====

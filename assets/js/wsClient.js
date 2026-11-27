@@ -1,11 +1,11 @@
-﻿/**
+/**
  * Módulo Cliente WebSocket Seguro Compartido (wsClient.js - v20)
  * Autenticado por token, con cambio limpio de vehículo sin conexiones duplicadas.
  */
 
-import { CONFIG } from "./config.js?v=20";
-import { uiState } from "./uiState.js?v=20";
-import { sessionStore } from "./sessionStore.js?v=20";
+import { CONFIG } from "./config.js?v=21";
+import { uiState } from "./uiState.js?v=21";
+import { sessionStore } from "./sessionStore.js?v=21";
 
 class WsClient {
   constructor() {

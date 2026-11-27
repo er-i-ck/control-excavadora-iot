@@ -1,9 +1,9 @@
-﻿/**
+/**
  * Módulo de Estado de Interfaz (uiState.js - v20)
  * Gestiona indicadores (WSS, AWS, RDS), barra de evidencia, capacidades por modelo y bloqueo DEMO.
  */
 
-import { CONFIG } from "./config.js?v=20";
+import { CONFIG } from "./config.js?v=21";
 
 class UIStateManager {
   constructor() {

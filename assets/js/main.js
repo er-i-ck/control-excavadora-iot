@@ -2,17 +2,17 @@
  * Punto de Entrada Integrado: CONTROL + MONITOREO + ADMINISTRACIÓN (main.js - v20)
  */
 
-import { CONFIG } from "./config.js?v=20";
-import { apiClient } from "./apiClient.js?v=20";
-import { wsClient } from "./wsClient.js?v=20";
-import { uiState } from "./uiState.js?v=20";
-import { movementController } from "./movementController.js?v=20";
-import { JoystickComponent } from "./joystick.js?v=20";
-import { demoController } from "./demoController.js?v=20";
-import { navigation } from "./navigation.js?v=20";
-import { monitorController } from "./monitorController.js?v=20";
-import { sessionStore } from "./sessionStore.js?v=20";
-import { adminController } from "./adminController.js?v=20";
+import { CONFIG } from "./config.js?v=21";
+import { apiClient } from "./apiClient.js?v=21";
+import { wsClient } from "./wsClient.js?v=21";
+import { uiState } from "./uiState.js?v=21";
+import { movementController } from "./movementController.js?v=21";
+import { JoystickComponent } from "./joystick.js?v=21";
+import { demoController } from "./demoController.js?v=21";
+import { navigation } from "./navigation.js?v=21";
+import { monitorController } from "./monitorController.js?v=21";
+import { sessionStore } from "./sessionStore.js?v=21";
+import { adminController } from "./adminController.js?v=21";
 
 class AppInitializer {
   constructor() {

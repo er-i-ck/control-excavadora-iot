@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Módulo de Configuración Centralizada (v20)
  */
 
@@ -44,10 +44,10 @@ export const CONFIG = Object.freeze({
     AUTH_ME: "/auth/me",
     AUTH_LOGOUT: "/auth/logout",
     MIS_VEHICULOS: "/mis-vehiculos",
+    VEHICULO_SOPORTE: (idVehiculo) => `/vehiculos/${idVehiculo}/soporte`,
 
     ESTADO_VEHICULO: (idVehiculo) => `/estado/${idVehiculo}`,
     HISTORIAL_VEHICULO: (idVehiculo) => `/historial/${idVehiculo}`,
-    COMANDOS_VEHICULO: (idVehiculo) => `/comandos/vehiculo/${idVehiculo}`,
     REGISTRAR_MOVIMIENTO: "/movimientos/",
     COMANDOS_VEHICULO: (idVehiculo) => `/comandos/vehiculo/${idVehiculo}`,
     CREAR_COMANDO: "/comandos/",

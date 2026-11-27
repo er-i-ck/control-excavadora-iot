@@ -2,10 +2,10 @@
  * Controlador de Movimientos (movementController.js - v20)
  */
 
-import { CONFIG } from "./config.js?v=20";
-import { apiClient } from "./apiClient.js?v=20";
-import { uiState } from "./uiState.js?v=20";
-import { sessionStore } from "./sessionStore.js?v=20";
+import { CONFIG } from "./config.js?v=21";
+import { apiClient } from "./apiClient.js?v=21";
+import { uiState } from "./uiState.js?v=21";
+import { sessionStore } from "./sessionStore.js?v=21";
 
 const PULSE_DURATIONS_MS = {
   LUZ: 300,

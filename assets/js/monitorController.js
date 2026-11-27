@@ -2,11 +2,11 @@
  * Controlador de Monitoreo en Tiempo Real (monitorController.js - v20)
  */
 
-import { CONFIG, resolverComandoInfo } from "./config.js?v=20";
-import { apiClient } from "./apiClient.js?v=20";
-import { wsClient } from "./wsClient.js?v=20";
-import { extraerCampoFecha, formatearFechaHora } from "./dateUtils.js?v=20";
-import { sessionStore } from "./sessionStore.js?v=20";
+import { CONFIG, resolverComandoInfo } from "./config.js?v=21";
+import { apiClient } from "./apiClient.js?v=21";
+import { wsClient } from "./wsClient.js?v=21";
+import { extraerCampoFecha, formatearFechaHora } from "./dateUtils.js?v=21";
+import { sessionStore } from "./sessionStore.js?v=21";
 
 class MonitorController {
   constructor() {

@@ -2,11 +2,11 @@
  * Controlador de Secuencias DEMO (demoController.js - v20)
  */
 
-import { apiClient } from "./apiClient.js?v=20";
-import { wsClient } from "./wsClient.js?v=20";
-import { movementController } from "./movementController.js?v=20";
-import { uiState } from "./uiState.js?v=20";
-import { sessionStore } from "./sessionStore.js?v=20";
+import { apiClient } from "./apiClient.js?v=21";
+import { wsClient } from "./wsClient.js?v=21";
+import { movementController } from "./movementController.js?v=21";
+import { uiState } from "./uiState.js?v=21";
+import { sessionStore } from "./sessionStore.js?v=21";
 
 class DemoController {
   constructor() {
