@@ -1,5 +1,5 @@
 ﻿/**
- * Controlador de Administración, Roles, Mis Vehículos, Editor de DEMOs e Invitados (v20)
+ * Controlador de Administración, Roles, Mis Vehículos, Editor de DEMOs, Movimientos e Invitados (v20)
  */
 
 import { CONFIG, obtenerIconoVehiculo } from "./config.js?v=20";
@@ -17,6 +17,7 @@ class AdminController {
     this.modelosCache = [];
     this.unidadesCache = [];
     this.clientesCache = [];
+    this.comandosCache = [];
     this.editorPasos = [];
     this.editorComandosUnidad = [];
     this.guestCountdownInterval = null;
@@ -139,6 +140,17 @@ class AdminController {
       e.preventDefault();
       this._guardarDemoCompleta();
     });
+
+    document.getElementById("mov-cmd-vehiculo")?.addEventListener("change", () => {
+      this._resetFormComando();
+      this.cargarComandosGestion();
+    });
+    document.getElementById("btn-reload-comandos")?.addEventListener("click", () => this.cargarComandosGestion());
+    document.getElementById("btn-cancelar-comando")?.addEventListener("click", () => this._resetFormComando());
+    document.getElementById("form-comando")?.addEventListener("submit", (e) => {
+      e.preventDefault();
+      this._handleGuardarComando();
+    });
   }
 
   async syncForSession() {
@@ -181,7 +193,7 @@ class AdminController {
 
   async switchSubtab(target) {
     const rol = sessionStore.getRole();
-    if (rol !== "ADMIN" && !["mis-vehiculos", "editor-demos"].includes(target)) {
+    if (rol !== "ADMIN" && !["mis-vehiculos", "editor-demos", "movimientos"].includes(target)) {
       target = "mis-vehiculos";
     }
     this.currentSubtab = target;
@@ -204,6 +216,8 @@ class AdminController {
       this.renderMisVehiculos();
     } else if (target === "editor-demos") {
       await this.prepararEditorDemos();
+    } else if (target === "movimientos") {
+      await this.prepararGestionMovimientos();
     } else if (target === "auditoria") {
       await this.cargarAuditoria();
     }
@@ -474,11 +488,13 @@ class AdminController {
   }
 
   _stopGuestCountdown() {
-    if (this.guestInactivityTimer) { clearTimeout(this.guestInactivityTimer); this.guestInactivityTimer = null; }
+    if (this.guestInactivityTimer) {
+      clearTimeout(this.guestInactivityTimer);
+      this.guestInactivityTimer = null;
+    }
     if (this.guestCountdownInterval) {
       clearInterval(this.guestCountdownInterval);
       this.guestCountdownInterval = null;
-    this.guestInactivityTimer = null;
     }
     document.getElementById("guest-timer-badge")?.classList.add("d-none");
   }
@@ -1151,6 +1167,172 @@ class AdminController {
     }
   }
 
+  // ==========================
+  // GESTIÓN DE MOVIMIENTOS / COMANDOS (ADMIN Y USUARIO)
+  // ==========================
+  async prepararGestionMovimientos() {
+    const selVeh = document.getElementById("mov-cmd-vehiculo");
+    if (!selVeh) return;
+
+    this._resetFormComando();
+
+    const vehs = sessionStore.getRole() === "ADMIN"
+      ? (await apiClient.obtenerUnidadesAdmin()).filter((u) => u.activo)
+      : sessionStore.getVehicles();
+
+    if (!vehs.length) {
+      selVeh.innerHTML = '<option value="">Sin unidades disponibles</option>';
+      const tbody = document.getElementById("comandos-tbody");
+      if (tbody) tbody.innerHTML = '<tr><td colspan="4" class="text-secondary text-center py-3">No tienes vehículos asignados.</td></tr>';
+      return;
+    }
+
+    const activeId = Number(sessionStore.getActiveVehicleId() || vehs[0].id_vehiculo);
+    selVeh.innerHTML = vehs
+      .map((v) => `<option value="${v.id_vehiculo}" ${Number(v.id_vehiculo) === activeId ? "selected" : ""}>#${v.id_vehiculo} · ${this._esc(v.codigo_serie || "")} ${this._esc(v.nombre)}</option>`)
+      .join("");
+
+    await this.cargarComandosGestion();
+  }
+
+  async cargarComandosGestion() {
+    const idVeh = Number(document.getElementById("mov-cmd-vehiculo")?.value);
+    const tbody = document.getElementById("comandos-tbody");
+    if (!idVeh || !tbody) return;
+
+    tbody.innerHTML = '<tr><td colspan="4" class="text-secondary text-center py-3">Cargando movimientos en RDS...</td></tr>';
+    try {
+      const lista = await apiClient.obtenerComandosVehiculo(idVeh);
+      this.comandosCache = Array.isArray(lista) ? lista : [];
+
+      if (!this.comandosCache.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-secondary text-center py-3">Este vehículo aún no tiene movimientos registrados.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = this.comandosCache
+        .map((c) => `
+          <tr>
+            <td><span class="badge bg-secondary">${c.codigo}</span></td>
+            <td class="fw-semibold text-light">${this._esc(c.nombre)}</td>
+            <td class="text-secondary">${this._esc(c.descripcion || "—")}</td>
+            <td class="text-end text-nowrap">
+              <button type="button" class="btn btn-xs btn-outline-info me-1 btn-edit-cmd" data-id="${c.id_comando}">
+                <i class="bi bi-pencil" aria-hidden="true"></i>
+              </button>
+              <button type="button" class="btn btn-xs btn-outline-danger btn-del-cmd" data-id="${c.id_comando}">
+                <i class="bi bi-trash" aria-hidden="true"></i>
+              </button>
+            </td>
+          </tr>
+        `)
+        .join("");
+
+      tbody.querySelectorAll(".btn-edit-cmd").forEach((btn) => {
+        btn.addEventListener("click", () => this._cargarComandoEnFormulario(Number(btn.dataset.id)));
+      });
+      tbody.querySelectorAll(".btn-del-cmd").forEach((btn) => {
+        btn.addEventListener("click", () => this._desactivarComando(Number(btn.dataset.id)));
+      });
+    } catch (err) {
+      tbody.innerHTML = `<tr><td colspan="4" class="text-danger text-center py-3">${this._esc(err.message)}</td></tr>`;
+    }
+  }
+
+  _cargarComandoEnFormulario(idComando) {
+    const cmd = this.comandosCache.find((c) => Number(c.id_comando) === idComando);
+    if (!cmd) return;
+
+    document.getElementById("cmd-edit-id").value = String(cmd.id_comando);
+    document.getElementById("cmd-nombre").value = cmd.nombre || "";
+    document.getElementById("cmd-codigo").value = cmd.codigo ?? "";
+    document.getElementById("cmd-descripcion").value = cmd.descripcion || "";
+
+    const titulo = document.getElementById("cmd-form-titulo");
+    if (titulo) titulo.textContent = `Editar Movimiento #${cmd.id_comando}`;
+    const btnSub = document.getElementById("btn-submit-comando");
+    if (btnSub) btnSub.innerHTML = '<i class="bi bi-check-circle me-1" aria-hidden="true"></i>Actualizar Movimiento';
+    document.getElementById("btn-cancelar-comando")?.classList.remove("d-none");
+  }
+
+  _resetFormComando() {
+    const editId = document.getElementById("cmd-edit-id");
+    if (editId) editId.value = "";
+    const nombre = document.getElementById("cmd-nombre");
+    if (nombre) nombre.value = "";
+    const codigo = document.getElementById("cmd-codigo");
+    if (codigo) codigo.value = "";
+    const desc = document.getElementById("cmd-descripcion");
+    if (desc) desc.value = "";
+
+    const titulo = document.getElementById("cmd-form-titulo");
+    if (titulo) titulo.textContent = "Agregar Movimiento / Comando";
+    const btnSub = document.getElementById("btn-submit-comando");
+    if (btnSub) btnSub.innerHTML = '<i class="bi bi-plus-circle me-1" aria-hidden="true"></i>Guardar Movimiento';
+    document.getElementById("btn-cancelar-comando")?.classList.add("d-none");
+  }
+
+  async _handleGuardarComando() {
+    const idEdit = Number(document.getElementById("cmd-edit-id")?.value || 0);
+    const idVeh = Number(document.getElementById("mov-cmd-vehiculo")?.value || 0);
+    const nombre = (document.getElementById("cmd-nombre")?.value || "").trim().toUpperCase();
+    const codigo = Number(document.getElementById("cmd-codigo")?.value);
+    const descripcion = (document.getElementById("cmd-descripcion")?.value || "").trim();
+    const btn = document.getElementById("btn-submit-comando");
+
+    if (!idVeh || !nombre || Number.isNaN(codigo) || codigo < 1) {
+      this.showFeedback("Completa vehículo, nombre y un código numérico válido.", "warning");
+      return;
+    }
+
+    if (btn) btn.disabled = true;
+    try {
+      if (idEdit) {
+        await apiClient.actualizarComando(idEdit, {
+          nombre,
+          codigo,
+          descripcion,
+          activo: 1
+        });
+        this.showFeedback(`Movimiento "${nombre}" actualizado correctamente.`, "success");
+      } else {
+        await apiClient.crearComando({
+          id_vehiculo: idVeh,
+          nombre,
+          codigo,
+          descripcion
+        });
+        this.showFeedback(`Movimiento "${nombre}" registrado en RDS.`, "success");
+      }
+
+      this._resetFormComando();
+      await this.cargarComandosGestion();
+    } catch (err) {
+      this.showFeedback(`No se pudo guardar el movimiento: ${err.message}`, "danger");
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  async _desactivarComando(idComando) {
+    const cmd = this.comandosCache.find((c) => Number(c.id_comando) === idComando);
+    const etiqueta = cmd ? `${cmd.nombre} (Cód. ${cmd.codigo})` : `#${idComando}`;
+    if (!window.confirm(`¿Desactivar el movimiento ${etiqueta}? Se aplicará baja lógica conservando el historial.`)) {
+      return;
+    }
+
+    try {
+      await apiClient.eliminarComando(idComando);
+      this.showFeedback(`Movimiento ${etiqueta} desactivado.`, "info");
+      if (Number(document.getElementById("cmd-edit-id")?.value) === idComando) {
+        this._resetFormComando();
+      }
+      await this.cargarComandosGestion();
+    } catch (err) {
+      this.showFeedback(`Error al desactivar movimiento: ${err.message}`, "danger");
+    }
+  }
+
   async cargarAuditoria() {
     const tbody = document.getElementById("admin-auditoria-tbody");
     if (!tbody) return;
@@ -1195,5 +1377,3 @@ class AdminController {
 }
 
 export const adminController = new AdminController();
-
-

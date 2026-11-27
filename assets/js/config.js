@@ -49,7 +49,10 @@ export const CONFIG = Object.freeze({
     HISTORIAL_VEHICULO: (idVehiculo) => `/historial/${idVehiculo}`,
     COMANDOS_VEHICULO: (idVehiculo) => `/comandos/vehiculo/${idVehiculo}`,
     REGISTRAR_MOVIMIENTO: "/movimientos/",
-
+    COMANDOS_VEHICULO: (idVehiculo) => `/comandos/vehiculo/${idVehiculo}`,
+    CREAR_COMANDO: "/comandos/",
+    ACTUALIZAR_COMANDO: (idComando) => `/comandos/actualizar/${idComando}`,
+    ELIMINAR_COMANDO: (idComando) => `/comandos/eliminar/${idComando}`,
     DEMOS_VEHICULO: (idVehiculo) => `/gestion-demos/vehiculo/${idVehiculo}`,
     MOVIMIENTOS_DEMO: (idDemo) => `/gestion-demos/movimientos/${idDemo}`,
     GUARDAR_DEMO_COMPLETA: "/gestion-demos/guardar-completa",

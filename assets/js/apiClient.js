@@ -157,6 +157,26 @@ class ApiClient {
     return Array.isArray(res.data) ? res.data : [];
   }
 
+  async crearComando(payload) {
+    return this.request(CONFIG.ENDPOINTS.CREAR_COMANDO, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+  }
+
+  async actualizarComando(idComando, payload) {
+    return this.request(CONFIG.ENDPOINTS.ACTUALIZAR_COMANDO(idComando), {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+  }
+
+  async eliminarComando(idComando) {
+    return this.request(CONFIG.ENDPOINTS.ELIMINAR_COMANDO(idComando), {
+      method: "POST"
+    });
+  }
+
   async enviarMovimiento(codigoOIdComando, idVehiculo) {
     const payload = {
       id_vehiculo: Number(idVehiculo),
